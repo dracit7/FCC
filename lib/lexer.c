@@ -2126,6 +2126,11 @@ void yyfree (void * ptr )
 int yywrap() {return 1;}
 
 void lexer_routine() {
+
+#ifdef SHOW_TUPLES
+  printf("(%s, %s)\n", "type", yytext);
+#endif
+
   yylloc.first_line = yylloc.last_line = yylineno;
   yylloc.first_column = yycolumn;
   yylloc.last_column = yycolumn + yyleng - 1;

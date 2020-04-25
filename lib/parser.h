@@ -97,7 +97,9 @@ extern int yydebug;
     DEC_LIST = 303,
     FUNC_CALL = 304,
     ARG_LIST = 305,
-    NO_ELSE = 306
+    ARRAY_CALL = 306,
+    VAR_INIT = 307,
+    NO_ELSE = 308
   };
 #endif
 
@@ -112,7 +114,7 @@ union YYSTYPE
   char* str;
   ast_node* node;
 
-#line 116 "lib/parser.h"
+#line 118 "lib/parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

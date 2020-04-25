@@ -91,17 +91,17 @@ void ast_trav(ast_node* t, int indent) {
     ast_show(indent, "Function name: %s", t->value.str);
     if (t->children[0]) {
       ast_show(indent, "Parameter list:");
-      ast_trav(t->children[0], indent+1);
+      ast_trav(t->children[0], indent);
     } else ast_show(indent, "No parameter");
     break;
 	case PARAM_LIST:
-    ast_show(indent, "***");
-    ast_trav(t->children[0], indent+1);
-    ast_trav(t->children[1], indent+1);
+    ast_show(indent+1, "***");
+    ast_trav(t->children[0], indent);
+    ast_trav(t->children[1], indent);
     break;
 	case PARAM_DEC:
-    ast_trav(t->children[0], 0);
-    ast_trav(t->children[0], 1);
+    ast_trav(t->children[0], indent+1);
+    ast_trav(t->children[1], indent+1);
     break;
 	case STMT_LIST:
     ast_trav(t->children[0],indent);
@@ -132,15 +132,32 @@ void ast_trav(ast_node* t, int indent) {
     ast_trav(t->children[1], indent+1);
     break;
   case VAR_DEF:
-    ast_trav(t->children[0],indent);
-    ast_trav(t->children[1],indent);
+    ast_show(indent, "Local variable declaration:");
+    ast_trav(t->children[0],indent+1);
+    ast_trav(t->children[1],indent+1);
     break;
   case DEC_LIST:
     ast_trav(t->children[0], indent);
     ast_trav(t->children[1], indent);
     break;
+  case VAR_INIT:
+    ast_show(indent, "Variable initialization:");
+    ast_trav(t->children[0],indent+1);
+    ast_trav(t->children[1],indent+1);
+    break;
 	case IDENT:
     ast_show(indent, "Name: %s", t->value.str);
+    for (int i = 0; i < t->dim; i++) {
+      if (t->capacity[i])
+        ast_show(indent, "Dim %d: capacity %d", i+1, t->capacity[i]);
+      else
+        ast_show(indent, "Dim %d: capacity not decleared", i+1);
+    }
+    break;
+  case ARRAY_CALL:
+    ast_trav(t->children[0], indent);
+    ast_show(indent, "Array index:");
+    ast_trav(t->children[1], indent+1);
     break;
 	case L_INT:
     ast_show(indent, "%s: %d", ast_table[T_INT], t->value.itg);

@@ -4,6 +4,7 @@
 
 #define MAX_IDENT_LEN 64
 #define MAX_CHILD_NUM 4
+#define MAX_ARRAY_DIM 16
 
 #define INDENT_SIZE 2
 

@@ -18,11 +18,16 @@ typedef struct _node {
     uint64_t itg;
   } value;
 
+  // Dim and capacity of this node, only valid in arrays.
+  int dim;
+  int capacity[MAX_ARRAY_DIM];
+
   // Children of this node.
   struct _node* children[MAX_CHILD_NUM];
 
   // Line number information
   int lineno;
+
 
 } ast_node;
 

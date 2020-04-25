@@ -67,7 +67,8 @@ void yyerror(const char* fmt, ...);
 %token EXT_DEF_LIST EXT_VAR_DEF FUNC_DEF
   EXT_DECL_LIST FUNC_DECL PARAM_LIST PARAM_DEC
   STMT_LIST IF_THEN IF_THEN_ELSE VAR_DEF
-  DEC_LIST FUNC_CALL ARG_LIST
+  DEC_LIST FUNC_CALL ARG_LIST ARRAY_CALL
+  VAR_INIT
 
 // Precedence for resolving the ambiguity
 // between if-else and if
@@ -119,6 +120,14 @@ ext_decl_list: var_decl {$$ = $1;}
 var_name: IDENT {
     $$ = ast_new_node(0, IDENT, yylineno);
     strcpy($$->value.str, $1);
+  }
+  | var_name '[' ']' {
+    $$ = $1;
+    $$->capacity[$$->dim++] = 0;
+  }
+  | var_name '[' L_INT ']' {
+    $$ = $1;
+    $$->capacity[$$->dim++] = $3;
   }
   ;
 
@@ -180,7 +189,7 @@ decl_list: var_decl {$$ = $1;}
 
 var_decl: var_name {$$ = $1;}
   | var_name ASSIGN expr
-    {$$ = ast_new_node(2, ASSIGN, yylineno, $1, $3);}
+    {$$ = ast_new_node(2, VAR_INIT, yylineno, $1, $3);}
   ;
 
 expr: IDENT ASSIGN expr {
@@ -224,8 +233,11 @@ expr: IDENT ASSIGN expr {
       strcpy($$->value.str, $1);
     }
   | IDENT {
-      $$=ast_new_node(0, IDENT, yylineno);
+      $$ = ast_new_node(0, IDENT, yylineno);
       strcpy($$->value.str, $1);
+    }
+  | expr '[' expr ']' {
+      $$ = ast_new_node(2, ARRAY_CALL, yylineno, $1, $3);
     }
   | L_INT {
       $$ = ast_new_node(0, L_INT, yylineno);

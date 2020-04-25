@@ -5,6 +5,6 @@ lexer: $(SCRIPTS)/lexer.l
 
 parser: $(SCRIPTS)/parser.y
 	@echo + $(YACC)[SCRIPTS] $<
-	@$(YACC) --defines=$(LIBDIR)/parser.h -o $(LIBDIR)/parser.c $<
+	@$(YACC) --defines=$(LIBDIR)/parser.h -o $(LIBDIR)/parser.c --warnings=none $<
 
 all: lexer parser

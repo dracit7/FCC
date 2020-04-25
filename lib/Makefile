@@ -3,6 +3,7 @@ LIB_SRC := \
 	lexer.c\
 	parser.c\
 	ast.c\
+	log.c\
 
 LIB_OBJ := $(patsubst %.c, $(OBJDIR)/%.o, $(LIB_SRC))
 LIB_INC := $(patsubst %.c, $(LIBDIR)/%.h, $(LIB_SRC))

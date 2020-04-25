@@ -6,6 +6,7 @@
 #include <lib/parser.h>
 
 int yycolumn = 1;
+
 void lexer_routine();
 #define YY_USER_ACTION lexer_routine();
 %}
@@ -141,11 +142,6 @@ void {return T_VOID;}
 int yywrap() {return 1;}
 
 void lexer_routine() {
-
-#ifdef SHOW_TUPLES
-  printf("(%s, %s)\n", "type", yytext);
-#endif
-
   yylloc.first_line = yylloc.last_line = yylineno;
   yylloc.first_column = yycolumn;
   yylloc.last_column = yycolumn + yyleng - 1;

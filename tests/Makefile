@@ -8,7 +8,7 @@ TESTS := $(patsubst %.c, test-%, $(TESTS_SRC))
 
 $(TESTS): all
 	@echo + $(EXECUTABLE)[TEST] $@
-	@$(BINDIR)/$(EXECUTABLE) < $(patsubst test-%, $(TESTDIR)/%.c, $@)
+	@$(BINDIR)/$(EXECUTABLE) $(BINFLAGS) -f $(patsubst test-%, $(TESTDIR)/%.c, $@)
 
 test: $(TESTS)
 	

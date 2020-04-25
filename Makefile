@@ -19,7 +19,7 @@ CFLAGS += -DSHOW_AST
 endif
 
 ifdef SHOW_TUPLES
-CFLAGS += -DSHOW_TUPLES
+BINFLAGS += -l
 endif
 
 .PHONY: all lexer parser

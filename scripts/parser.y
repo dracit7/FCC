@@ -32,6 +32,7 @@ void yyerror(const char* fmt, ...);
 %token T_INT
 %token T_FLOAT
 %token T_STRING
+%token T_STRUCT
 %token T_VOID
 
 // Operators
@@ -46,6 +47,7 @@ void yyerror(const char* fmt, ...);
 %left OP_ADD OP_SUB
 %left OP_STAR OP_DIV OP_MOD
 %right OP_NOT OP_INC OP_DEC UMINUS
+%left OP_DOT
 
 // Keywords for control
 %token IF
@@ -68,7 +70,7 @@ void yyerror(const char* fmt, ...);
   EXT_DECL_LIST FUNC_DECL PARAM_LIST PARAM_DEC
   STMT_LIST IF_THEN IF_THEN_ELSE VAR_DEF
   DEC_LIST FUNC_CALL ARG_LIST ARRAY_CALL
-  VAR_INIT
+  VAR_INIT MEMBER_LIST STRUCT_DEF MEMBER_CALL
 
 // Precedence for resolving the ambiguity
 // between if-else and if
@@ -79,6 +81,7 @@ void yyerror(const char* fmt, ...);
   var_type ext_decl_list var_name func_decl
   param_list param code_block stmt_list stmt
   decl decl_list var_decl expr arg_list type_void
+  member_list
 
 %start program
 
@@ -99,6 +102,10 @@ ext_def: var_type ext_decl_list ';'
     {$$ = ast_new_node(3, FUNC_DEF, yylineno, $1, $2, $3);}
   | type_void func_decl code_block 
     {$$ = ast_new_node(3, FUNC_DEF, yylineno, $1, $2, $3);}
+  | T_STRUCT IDENT '{' member_list '}' ';' {
+      $$ = ast_new_node(1, STRUCT_DEF, yylineno, $4);
+      strcpy($$->value.str, $2);
+    }
   ;
 
 type_void: T_VOID
@@ -110,7 +117,22 @@ var_type: T_INT
   | T_FLOAT {$$ = ast_new_node(0, T_FLOAT, yylineno);}
   | T_CHAR {$$ = ast_new_node(0, T_CHAR, yylineno);}
   | T_STRING {$$ = ast_new_node(0, T_STRING, yylineno);}
-  ;      
+  | T_STRUCT IDENT '{' member_list '}' {
+      $$ = ast_new_node(1, T_STRUCT, yylineno, $4);
+      strcpy($$->value.str, $2);
+    }
+  | T_STRUCT '{' member_list '}' 
+    {$$ = ast_new_node(1, T_STRUCT, yylineno, $3);}
+  | T_STRUCT IDENT {
+      $$ = ast_new_node(0, T_STRUCT, yylineno);
+      strcpy($$->value.str, $2);
+    }
+  ;
+
+member_list: var_type decl_list ';' member_list
+    {$$ = ast_new_node(3, MEMBER_LIST, yylineno, $1, $2, $4);}
+  | {$$ = NULL;}
+  ;
 
 ext_decl_list: var_decl {$$ = $1;}
   | var_decl ',' ext_decl_list
@@ -222,6 +244,10 @@ expr: IDENT ASSIGN expr {
     {$$ = ast_new_node(1, OP_INC, yylineno, $1);}
   | OP_DEC expr 
     {$$ = ast_new_node(1, OP_DEC, yylineno, $2);}
+  | expr OP_DOT IDENT {
+      $$ = ast_new_node(1, MEMBER_CALL, yylineno, $1);
+      strcpy($$->value.str, $3);
+    }
   | expr OP_DEC 
     {$$ = ast_new_node(1, OP_DEC, yylineno, $1);}
   | IDENT '(' arg_list ')' {

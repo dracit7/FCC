@@ -6,6 +6,7 @@ char* ast_table[] = {
   [T_FLOAT] = "float",
   [T_CHAR] = "char",
   [T_STRING] = "string",
+  [T_STRUCT] = "struct",
   [T_VOID] = "void",
   [OP_AND] = "Logic and",
   [OP_OR] = "Logic or",
@@ -76,9 +77,32 @@ void ast_trav(ast_node* t, int indent) {
 	case T_VOID:
     ast_show(indent, "Type: %s", ast_table[t->type]);
     break;
+  case T_STRUCT:
+    if (t->children[0]) {
+      ast_show(indent, "Type: %s", ast_table[t->type]);
+      if (t->value.str[0])
+        ast_show(indent+1, "Struct name: %s", t->value.str);
+      else
+        ast_show(indent+1, "Anonymous struct");
+      ast_show(indent+1, "Members:");
+      ast_trav(t->children[0], indent+2);
+    } else ast_show(indent, "Type: struct %s", t->value.str);
+    break;
+  case MEMBER_LIST:
+    ast_show(indent, "***");
+    ast_trav(t->children[0], indent);
+    ast_trav(t->children[1], indent);
+    ast_trav(t->children[2], indent);
+    break;
   case EXT_DECL_LIST:
     ast_trav(t->children[0], indent);
     ast_trav(t->children[1], indent);
+    break;
+  case STRUCT_DEF:
+    ast_show(indent, "Struct definition:");
+    ast_show(indent+1, "Struct name: %s", t->value.str);
+    ast_show(indent+1, "Members:");
+    ast_trav(t->children[0], indent+2);
     break;
 	case FUNC_DEF:
     ast_show(indent, "Function declaration:");
@@ -158,6 +182,11 @@ void ast_trav(ast_node* t, int indent) {
     ast_trav(t->children[0], indent);
     ast_show(indent, "Array index:");
     ast_trav(t->children[1], indent+1);
+    break;
+  case MEMBER_CALL:
+    ast_show(indent, "Get struct member:");
+    ast_trav(t->children[0], indent+1);
+    ast_show(indent+1, "Member: %s", t->value.str);
     break;
 	case L_INT:
     ast_show(indent, "%s: %d", ast_table[T_INT], t->value.itg);

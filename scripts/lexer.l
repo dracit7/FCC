@@ -52,6 +52,7 @@ char {return T_CHAR;}
 int {return T_INT;}
 float {return T_FLOAT;}
 string {return T_STRING;}
+struct {return T_STRUCT;}
 void {return T_VOID;}
 
   /* Operators */
@@ -62,6 +63,7 @@ void {return T_VOID;}
 [/] {return OP_DIV;}
 [%] {return OP_MOD;}
 [!] {return OP_NOT;}
+[.] {return OP_DOT;}
 {OP_G} {return OP_G;}
 {OP_L} {return OP_L;}
 {OP_GE} {return OP_GE;}

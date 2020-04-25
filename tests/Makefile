@@ -2,12 +2,13 @@
 TESTS_SRC := \
 	function.c\
 	array.c\
+	struct.c\
 
-TESTS := $(patsubst %.c, %, $(TESTS_SRC))
+TESTS := $(patsubst %.c, test-%, $(TESTS_SRC))
 
-$(TESTS):
-	@echo + $(EXECUTABLE)[TEST] Testing $@...
-	@$(BINDIR)/$(EXECUTABLE) < $(TESTDIR)/$@.c
+$(TESTS): all
+	@echo + $(EXECUTABLE)[TEST] $@
+	@$(BINDIR)/$(EXECUTABLE) < $(patsubst test-%, $(TESTDIR)/%.c, $@)
 
-test: all $(TESTS)
+test: $(TESTS)
 	

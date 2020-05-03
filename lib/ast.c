@@ -10,12 +10,20 @@ char* ast_table[] = {
   [T_VOID] = "void",
   [OP_AND] = "Logic and",
   [OP_OR] = "Logic or",
+  [OP_NOT] = "Logic not",
   [OP_ADD] = "Add",
   [OP_SUB] = "Substract",
   [OP_STAR] = "Multiply",
   [OP_DIV] = "Division",
   [OP_MOD] = "Mod",
-  [OP_NOT] = "Logic not",
+  [OP_G] = "Is greater than",
+  [OP_L] = "Is less than",
+  [OP_GE] = "Is greater than or equal to",
+  [OP_LE] = "Is less than or equal to",
+  [OP_EQ] = "Is equal to",
+  [OP_NEQ] = "Is not equal to",
+  [OP_INC] = "Increase by 1",
+  [OP_DEC] = "Decrease by 1",
   [UMINUS] = "Negative",
 };
 
@@ -155,6 +163,17 @@ void ast_trav(ast_node* t, int indent) {
     ast_show(indent, "Do");
     ast_trav(t->children[1], indent+1);
     break;
+  case FOR:
+    ast_show(indent, "For loop");
+    ast_show(indent+1, "Initialization:");
+    ast_trav(t->children[0], indent+2);
+    ast_show(indent+1, "Test expression:");
+    ast_trav(t->children[1], indent+2);
+    ast_show(indent+1, "Update statement:");
+    ast_trav(t->children[2], indent+2);
+    ast_show(indent+1, "Loop body:");
+    ast_trav(t->children[3], indent+2);
+    break;
   case VAR_DEF:
     ast_show(indent, "Local variable declaration:");
     ast_trav(t->children[0],indent+1);
@@ -201,6 +220,10 @@ void ast_trav(ast_node* t, int indent) {
     ast_show(indent, "Assign to %s:", t->value.str);
     ast_trav(t->children[0], indent+1);
     break;
+	case COMP_ASSIGN:
+    ast_show(indent, "%s:", t->value.str);
+    ast_trav(t->children[0], indent+1);
+    break;
 	case OP_AND:
 	case OP_OR:
 	case OP_ADD:
@@ -208,11 +231,19 @@ void ast_trav(ast_node* t, int indent) {
 	case OP_STAR:
 	case OP_DIV:
 	case OP_MOD:
+  case OP_G:
+  case OP_L:
+  case OP_GE:
+  case OP_LE:
+  case OP_EQ:
+  case OP_NEQ:
     ast_show(indent, "%s", ast_table[t->type]);
     ast_trav(t->children[0],indent+1);
     ast_trav(t->children[1],indent+1);
     break;
 	case OP_NOT:
+  case OP_INC:
+  case OP_DEC:
 	case UMINUS:
     ast_show(indent, "%s", ast_table[t->type]);
     ast_trav(t->children[0],indent+1);

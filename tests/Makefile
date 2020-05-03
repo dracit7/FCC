@@ -3,6 +3,10 @@ TESTS_SRC := \
 	function.c\
 	array.c\
 	struct.c\
+	literal.c\
+	operators.c\
+	comment.c\
+	control.c\
 
 TESTS := $(patsubst %.c, test-%, $(TESTS_SRC))
 

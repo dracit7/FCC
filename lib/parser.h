@@ -79,32 +79,33 @@ extern int yydebug;
     ELSE = 285,
     RETURN = 286,
     WHILE = 287,
-    BREAK = 288,
-    CONTINUE = 289,
-    IDENT = 290,
-    L_INT = 291,
-    L_FLOAT = 292,
-    L_STRING = 293,
-    EXT_DEF_LIST = 294,
-    EXT_VAR_DEF = 295,
-    FUNC_DEF = 296,
-    EXT_DECL_LIST = 297,
-    FUNC_DECL = 298,
-    PARAM_LIST = 299,
-    PARAM_DEC = 300,
-    STMT_LIST = 301,
-    IF_THEN = 302,
-    IF_THEN_ELSE = 303,
-    VAR_DEF = 304,
-    DEC_LIST = 305,
-    FUNC_CALL = 306,
-    ARG_LIST = 307,
-    ARRAY_CALL = 308,
-    VAR_INIT = 309,
-    MEMBER_LIST = 310,
-    STRUCT_DEF = 311,
-    MEMBER_CALL = 312,
-    NO_ELSE = 313
+    FOR = 288,
+    BREAK = 289,
+    CONTINUE = 290,
+    IDENT = 291,
+    L_INT = 292,
+    L_FLOAT = 293,
+    L_STRING = 294,
+    EXT_DEF_LIST = 295,
+    EXT_VAR_DEF = 296,
+    FUNC_DEF = 297,
+    EXT_DECL_LIST = 298,
+    FUNC_DECL = 299,
+    PARAM_LIST = 300,
+    PARAM_DEC = 301,
+    STMT_LIST = 302,
+    IF_THEN = 303,
+    IF_THEN_ELSE = 304,
+    VAR_DEF = 305,
+    DEC_LIST = 306,
+    FUNC_CALL = 307,
+    ARG_LIST = 308,
+    ARRAY_CALL = 309,
+    VAR_INIT = 310,
+    MEMBER_LIST = 311,
+    STRUCT_DEF = 312,
+    MEMBER_CALL = 313,
+    NO_ELSE = 314
   };
 #endif
 
@@ -119,7 +120,7 @@ union YYSTYPE
   char* str;
   ast_node* node;
 
-#line 123 "lib/parser.h"
+#line 124 "lib/parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

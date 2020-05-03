@@ -40,6 +40,7 @@ void yyerror(const char* fmt, ...);
 // Operators that're declared latter has
 // higher priority.
 %left ASSIGN COMP_ASSIGN
+%token <str> COMP_ASSIGN
 %left OP_OR
 %left OP_AND
 %left OP_EQ OP_NEQ
@@ -54,6 +55,7 @@ void yyerror(const char* fmt, ...);
 %token ELSE
 %token RETURN
 %token WHILE
+%token FOR
 %token BREAK
 %token CONTINUE
 
@@ -194,6 +196,10 @@ stmt: expr ';'
     {$$ = ast_new_node(3, IF_THEN_ELSE, yylineno, $3, $5, $7);}
   | WHILE '(' expr ')' stmt
     {$$ = ast_new_node(2, WHILE, yylineno, $3, $5);}
+  | FOR '(' stmt expr ';' expr ')' stmt
+    {$$ = ast_new_node(4, FOR, yylineno, $3, $4, $6, $8);}
+  | FOR '(' decl expr ';' expr ')' stmt
+    {$$ = ast_new_node(4, FOR, yylineno, $3, $4, $6, $8);}
   | BREAK ';'
     {$$ = ast_new_node(0, BREAK, yylineno);}
   | CONTINUE ';'
@@ -218,6 +224,11 @@ expr: IDENT ASSIGN expr {
     $$ = ast_new_node(1, ASSIGN, yylineno, $3);
     strcpy($$->value.str, $1);
   }
+  | IDENT COMP_ASSIGN expr {
+    $$ = ast_new_node(1, COMP_ASSIGN, yylineno, $3);
+    strcpy($$->value.str, $1);
+    strcat($$->value.str, $2);
+  }
   | expr OP_AND expr 
     {$$ = ast_new_node(2, OP_AND, yylineno, $1, $3);}
   | expr OP_OR expr 
@@ -232,6 +243,18 @@ expr: IDENT ASSIGN expr {
     {$$ = ast_new_node(2, OP_DIV, yylineno, $1, $3);}
   | expr OP_MOD expr
     {$$ = ast_new_node(2, OP_MOD, yylineno, $1, $3);}
+  | expr OP_LE expr
+    {$$ = ast_new_node(2, OP_LE, yylineno, $1, $3);}
+  | expr OP_GE expr
+    {$$ = ast_new_node(2, OP_GE, yylineno, $1, $3);}
+  | expr OP_L expr
+    {$$ = ast_new_node(2, OP_L, yylineno, $1, $3);}
+  | expr OP_G expr
+    {$$ = ast_new_node(2, OP_G, yylineno, $1, $3);}
+  | expr OP_NEQ expr
+    {$$ = ast_new_node(2, OP_NEQ, yylineno, $1, $3);}
+  | expr OP_EQ expr
+    {$$ = ast_new_node(2, OP_EQ, yylineno, $1, $3);}
   | '(' expr ')' 
     {$$ = $2;}
   | OP_SUB expr %prec UMINUS
@@ -244,12 +267,12 @@ expr: IDENT ASSIGN expr {
     {$$ = ast_new_node(1, OP_INC, yylineno, $1);}
   | OP_DEC expr 
     {$$ = ast_new_node(1, OP_DEC, yylineno, $2);}
+  | expr OP_DEC 
+    {$$ = ast_new_node(1, OP_DEC, yylineno, $1);}
   | expr OP_DOT IDENT {
       $$ = ast_new_node(1, MEMBER_CALL, yylineno, $1);
       strcpy($$->value.str, $3);
     }
-  | expr OP_DEC 
-    {$$ = ast_new_node(1, OP_DEC, yylineno, $1);}
   | IDENT '(' arg_list ')' {
       $$ = ast_new_node(1, FUNC_CALL, yylineno, $3);
       strcpy($$->value.str, $1);

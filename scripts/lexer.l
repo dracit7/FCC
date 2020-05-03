@@ -33,19 +33,24 @@ IF if
 ELSE else 
 RETURN return
 WHILE while
+FOR for
 BREAK break
 CONTINUE continue
 
 /* Literals */
-L_INT -?[1-9][0-9]*|[0]
-L_HINT -?[0][Xx]([1-9][0-9]*|[0])
-L_OINT -?[0][0-7]
-L_FLOAT -?[0-9]*[.][0-9]+([eE][+\-]?[0-9]*|[0])?f?
+L_INT [1-9][0-9]*|[0]
+L_HINT [0][Xx]([1-9][0-9]*|[0])
+L_OINT [0][0-7]
+L_FLOAT [0-9]*[.][0-9]+([eE][+\-]?[0-9]*|[0])?f?
 L_CHAR '([^'\\\n]|\\.)'
 L_STRING ["]([^"\\\n]|\\.|\\\n)*["]
 
-/* Others */
-COMMENT [/][/].*[\n]|[/][*].*[*][/]
+/* Comments */
+LINE_COMMENT [/][/].*[\n]
+BLOCK_COMMENT [/][*].*[*][/]
+
+%s NOT_COMMENT
+%x COMMENT
 
 %%
   /* Data types */
@@ -59,7 +64,7 @@ void {return T_VOID;}
   /* Operators */
 [;,()\[\]{}] {return yytext[0];}
 [+] {return OP_ADD;}
-[\-] {return OP_SUB;}
+[-] {return OP_SUB;}
 [*] {return OP_STAR;}
 [/] {return OP_DIV;}
 [%] {return OP_MOD;}
@@ -86,6 +91,7 @@ void {return T_VOID;}
 {ELSE} {return ELSE;}
 {RETURN} {return RETURN;}
 {WHILE} {return WHILE;}
+{FOR} {return FOR;}
 {BREAK} {return BREAK;}
 {CONTINUE} {return CONTINUE;}
 
@@ -127,7 +133,14 @@ void {return T_VOID;}
 }
 
   /* Spaces & Comments */
-{COMMENT} {}
+{LINE_COMMENT} {}
+[/][*] {BEGIN(COMMENT);}
+<COMMENT>[*][/] {BEGIN(NOT_COMMENT);}
+<COMMENT><<EOF>> {
+  printf("Error: comment not terminated.\n");
+}
+<COMMENT>. {}
+
 [\t\r ] {}
 
 [\n] {yycolumn = 1;}

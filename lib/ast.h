@@ -12,6 +12,6 @@
 extern char* ast_table[];
 
 ast_node* ast_new_node(int child_num, int type, int pos, ...);
-void ast_trav(ast_node* t, int indent);
+void ast_display(ast_node* t, int indent);
 
 #endif

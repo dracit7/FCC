@@ -90,7 +90,7 @@ void yyerror(const char* fmt, ...);
 %%
 
 program: ext_def_list 
-    {ast_trav($1, 1);}
+    {ast_display($1, 1);}
   ; 
 
 ext_def_list: ext_def ext_def_list

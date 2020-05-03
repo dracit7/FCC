@@ -1692,7 +1692,7 @@ yyreduce:
     {
   case 2:
 #line 93 "scripts/parser.y"
-    {ast_trav((yyvsp[0].node), 1);}
+    {ast_display((yyvsp[0].node), 1);}
 #line 1697 "lib/parser.c"
     break;
 

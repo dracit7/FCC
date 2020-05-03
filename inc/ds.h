@@ -28,7 +28,6 @@ typedef struct _node {
   // Line number information
   int lineno;
 
-
 } ast_node;
 
 #endif

@@ -27,6 +27,7 @@ char* ast_table[] = {
   [UMINUS] = "Negative",
 };
 
+// Allocate a new ast node and return its address.
 ast_node* ast_new_node(int child_num, int type, int pos, ...) {
 
   // Allocate a new node.
@@ -46,183 +47,176 @@ ast_node* ast_new_node(int child_num, int type, int pos, ...) {
   return t;
 }
 
-// Do indent
-static void do_indent(int indent) {
-  printf("%*c", indent, ' ');
-}
-
-static void ast_show(int indent, const char* fmt, ...) {
-
-#ifdef SHOW_AST
-  do_indent(indent*INDENT_SIZE);
+// printf with indent. 
+static void idtprintf(int indent, const char* fmt, ...) {
+  printf("%*c", indent*INDENT_SIZE, ' ');
   va_list args;
   va_start(args, fmt);
   vprintf(fmt, args);
   va_end(args);
   putchar('\n');
-#endif
-
 }
 
-void ast_trav(ast_node* t, int indent) {
+#ifdef SHOW_AST
+void ast_display(ast_node* t, int indent) {
   if (!t) return;
 
   switch (t->type) {
 	case EXT_DEF_LIST:
-    ast_trav(t->children[0], indent);
-    ast_trav(t->children[1], indent);
+    ast_display(t->children[0], indent);
+    ast_display(t->children[1], indent);
     break;
 	case EXT_VAR_DEF: 
-    ast_show(indent, "Global variable declaration:");
-    ast_trav(t->children[0], indent+1);
-    ast_show(indent+1, "Variables: ");
-    ast_trav(t->children[1], indent+2);
+    idtprintf(indent, "Global variable declaration:");
+    ast_display(t->children[0], indent+1);
+    idtprintf(indent+1, "Variables: ");
+    ast_display(t->children[1], indent+2);
     break;
 	case T_INT:
 	case T_FLOAT:
 	case T_CHAR:
 	case T_STRING:
 	case T_VOID:
-    ast_show(indent, "Type: %s", ast_table[t->type]);
+    idtprintf(indent, "Type: %s", ast_table[t->type]);
     break;
   case T_STRUCT:
     if (t->children[0]) {
-      ast_show(indent, "Type: %s", ast_table[t->type]);
+      idtprintf(indent, "Type: %s", ast_table[t->type]);
       if (t->value.str[0])
-        ast_show(indent+1, "Struct name: %s", t->value.str);
+        idtprintf(indent+1, "Struct name: %s", t->value.str);
       else
-        ast_show(indent+1, "Anonymous struct");
-      ast_show(indent+1, "Members:");
-      ast_trav(t->children[0], indent+2);
-    } else ast_show(indent, "Type: struct %s", t->value.str);
+        idtprintf(indent+1, "Anonymous struct");
+      idtprintf(indent+1, "Members:");
+      ast_display(t->children[0], indent+2);
+    } else idtprintf(indent, "Type: struct %s", t->value.str);
     break;
   case MEMBER_LIST:
-    ast_show(indent, "***");
-    ast_trav(t->children[0], indent);
-    ast_trav(t->children[1], indent);
-    ast_trav(t->children[2], indent);
+    idtprintf(indent, "***");
+    ast_display(t->children[0], indent);
+    ast_display(t->children[1], indent);
+    ast_display(t->children[2], indent);
     break;
   case EXT_DECL_LIST:
-    ast_trav(t->children[0], indent);
-    ast_trav(t->children[1], indent);
+    ast_display(t->children[0], indent);
+    ast_display(t->children[1], indent);
     break;
   case STRUCT_DEF:
-    ast_show(indent, "Struct definition:");
-    ast_show(indent+1, "Struct name: %s", t->value.str);
-    ast_show(indent+1, "Members:");
-    ast_trav(t->children[0], indent+2);
+    idtprintf(indent, "Struct definition:");
+    idtprintf(indent+1, "Struct name: %s", t->value.str);
+    idtprintf(indent+1, "Members:");
+    ast_display(t->children[0], indent+2);
     break;
 	case FUNC_DEF:
-    ast_show(indent, "Function declaration:");
-    ast_trav(t->children[0], indent+1);
-    ast_trav(t->children[1], indent+1);
-    ast_show(indent+1, "Function body:");
-    ast_trav(t->children[2], indent+2);
+    idtprintf(indent, "Function declaration:");
+    ast_display(t->children[0], indent+1);
+    ast_display(t->children[1], indent+1);
+    idtprintf(indent+1, "Function body:");
+    ast_display(t->children[2], indent+2);
     break;
 	case FUNC_DECL:
-    ast_show(indent, "Function name: %s", t->value.str);
+    idtprintf(indent, "Function name: %s", t->value.str);
     if (t->children[0]) {
-      ast_show(indent, "Parameter list:");
-      ast_trav(t->children[0], indent);
-    } else ast_show(indent, "No parameter");
+      idtprintf(indent, "Parameter list:");
+      ast_display(t->children[0], indent);
+    } else idtprintf(indent, "No parameter");
     break;
 	case PARAM_LIST:
-    ast_show(indent+1, "***");
-    ast_trav(t->children[0], indent);
-    ast_trav(t->children[1], indent);
+    idtprintf(indent+1, "***");
+    ast_display(t->children[0], indent);
+    ast_display(t->children[1], indent);
     break;
 	case PARAM_DEC:
-    ast_trav(t->children[0], indent+1);
-    ast_trav(t->children[1], indent+1);
+    ast_display(t->children[0], indent+1);
+    ast_display(t->children[1], indent+1);
     break;
 	case STMT_LIST:
-    ast_trav(t->children[0],indent);
-    ast_trav(t->children[1],indent);
+    ast_display(t->children[0],indent);
+    ast_display(t->children[1],indent);
     break;
 	case RETURN:
-    ast_show(indent, "Return");
-    ast_trav(t->children[0], indent+1);
+    idtprintf(indent, "Return");
+    ast_display(t->children[0], indent+1);
     break;
   case IF_THEN:
-    ast_show(indent, "If");
-    ast_trav(t->children[0], indent+1);
-    ast_show(indent, "Then");
-    ast_trav(t->children[1], indent+1);
+    idtprintf(indent, "If");
+    ast_display(t->children[0], indent+1);
+    idtprintf(indent, "Then");
+    ast_display(t->children[1], indent+1);
     break;
   case IF_THEN_ELSE:
-    ast_show(indent, "If");
-    ast_trav(t->children[0], indent+1);
-    ast_show(indent, "Then");
-    ast_trav(t->children[1], indent+1);
-    ast_show(indent, "Else");
-    ast_trav(t->children[2], indent+1);
+    idtprintf(indent, "If");
+    ast_display(t->children[0], indent+1);
+    idtprintf(indent, "Then");
+    ast_display(t->children[1], indent+1);
+    idtprintf(indent, "Else");
+    ast_display(t->children[2], indent+1);
     break;
   case WHILE:
-    ast_show(indent, "While");
-    ast_trav(t->children[0], indent+1);
-    ast_show(indent, "Do");
-    ast_trav(t->children[1], indent+1);
+    idtprintf(indent, "While");
+    ast_display(t->children[0], indent+1);
+    idtprintf(indent, "Do");
+    ast_display(t->children[1], indent+1);
     break;
   case FOR:
-    ast_show(indent, "For loop");
-    ast_show(indent+1, "Initialization:");
-    ast_trav(t->children[0], indent+2);
-    ast_show(indent+1, "Test expression:");
-    ast_trav(t->children[1], indent+2);
-    ast_show(indent+1, "Update statement:");
-    ast_trav(t->children[2], indent+2);
-    ast_show(indent+1, "Loop body:");
-    ast_trav(t->children[3], indent+2);
+    idtprintf(indent, "For loop");
+    idtprintf(indent+1, "Initialization:");
+    ast_display(t->children[0], indent+2);
+    idtprintf(indent+1, "Test expression:");
+    ast_display(t->children[1], indent+2);
+    idtprintf(indent+1, "Update statement:");
+    ast_display(t->children[2], indent+2);
+    idtprintf(indent+1, "Loop body:");
+    ast_display(t->children[3], indent+2);
     break;
   case VAR_DEF:
-    ast_show(indent, "Local variable declaration:");
-    ast_trav(t->children[0],indent+1);
-    ast_trav(t->children[1],indent+1);
+    idtprintf(indent, "Local variable declaration:");
+    ast_display(t->children[0],indent+1);
+    ast_display(t->children[1],indent+1);
     break;
   case DEC_LIST:
-    ast_trav(t->children[0], indent);
-    ast_trav(t->children[1], indent);
+    ast_display(t->children[0], indent);
+    ast_display(t->children[1], indent);
     break;
   case VAR_INIT:
-    ast_show(indent, "Variable initialization:");
-    ast_trav(t->children[0],indent+1);
-    ast_trav(t->children[1],indent+1);
+    idtprintf(indent, "Variable initialization:");
+    ast_display(t->children[0],indent+1);
+    ast_display(t->children[1],indent+1);
     break;
 	case IDENT:
-    ast_show(indent, "Name: %s", t->value.str);
+    idtprintf(indent, "Name: %s", t->value.str);
     for (int i = 0; i < t->dim; i++) {
       if (t->capacity[i])
-        ast_show(indent, "Dim %d: capacity %d", i+1, t->capacity[i]);
+        idtprintf(indent, "Dim %d: capacity %d", i+1, t->capacity[i]);
       else
-        ast_show(indent, "Dim %d: capacity not decleared", i+1);
+        idtprintf(indent, "Dim %d: capacity not decleared", i+1);
     }
     break;
   case ARRAY_CALL:
-    ast_trav(t->children[0], indent);
-    ast_show(indent, "Array index:");
-    ast_trav(t->children[1], indent+1);
+    ast_display(t->children[0], indent);
+    idtprintf(indent, "Array index:");
+    ast_display(t->children[1], indent+1);
     break;
   case MEMBER_CALL:
-    ast_show(indent, "Get struct member:");
-    ast_trav(t->children[0], indent+1);
-    ast_show(indent+1, "Member: %s", t->value.str);
+    idtprintf(indent, "Get struct member:");
+    ast_display(t->children[0], indent+1);
+    idtprintf(indent+1, "Member: %s", t->value.str);
     break;
 	case L_INT:
-    ast_show(indent, "%s: %d", ast_table[T_INT], t->value.itg);
+    idtprintf(indent, "%s: %d", ast_table[T_INT], t->value.itg);
     break;
 	case L_FLOAT:
-    ast_show(indent, "%s: %f", ast_table[T_FLOAT], t->value.flt);
+    idtprintf(indent, "%s: %f", ast_table[T_FLOAT], t->value.flt);
     break;
 	case L_STRING:
-    ast_show(indent, "%s: %s", ast_table[T_STRING], t->value.str);
+    idtprintf(indent, "%s: %s", ast_table[T_STRING], t->value.str);
     break;
 	case ASSIGN:
-    ast_show(indent, "Assign to %s:", t->value.str);
-    ast_trav(t->children[0], indent+1);
+    idtprintf(indent, "Assign to %s:", t->value.str);
+    ast_display(t->children[0], indent+1);
     break;
 	case COMP_ASSIGN:
-    ast_show(indent, "%s:", t->value.str);
-    ast_trav(t->children[0], indent+1);
+    idtprintf(indent, "%s:", t->value.str);
+    ast_display(t->children[0], indent+1);
     break;
 	case OP_AND:
 	case OP_OR:
@@ -237,28 +231,31 @@ void ast_trav(ast_node* t, int indent) {
   case OP_LE:
   case OP_EQ:
   case OP_NEQ:
-    ast_show(indent, "%s", ast_table[t->type]);
-    ast_trav(t->children[0],indent+1);
-    ast_trav(t->children[1],indent+1);
+    idtprintf(indent, "%s", ast_table[t->type]);
+    ast_display(t->children[0],indent+1);
+    ast_display(t->children[1],indent+1);
     break;
 	case OP_NOT:
   case OP_INC:
   case OP_DEC:
 	case UMINUS:
-    ast_show(indent, "%s", ast_table[t->type]);
-    ast_trav(t->children[0],indent+1);
+    idtprintf(indent, "%s", ast_table[t->type]);
+    ast_display(t->children[0],indent+1);
     break;
   case FUNC_CALL:
-    ast_show(indent, "Function call");
-    ast_show(indent+1, "Function name: %s", t->value.str);
+    idtprintf(indent, "Function call");
+    idtprintf(indent+1, "Function name: %s", t->value.str);
     if (t->children[0]) {
-      ast_show(indent+1, "Arguments:");
-      ast_trav(t->children[0],indent+2);
-    } else ast_show(indent+1, "No argument");
+      idtprintf(indent+1, "Arguments:");
+      ast_display(t->children[0],indent+2);
+    } else idtprintf(indent+1, "No argument");
     break;
 	case ARG_LIST:
-    ast_trav(t->children[0], indent);
-    ast_trav(t->children[1], indent);
+    ast_display(t->children[0], indent);
+    ast_display(t->children[1], indent);
     break;
   }
 }
+#else
+void ast_display(ast_node* t, int indent) {}
+#endif

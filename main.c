@@ -6,6 +6,7 @@
 #include <lib/ast.h>
 #include <lib/lexer.h>
 #include <lib/parser.h>
+#include <lib/semantic.h>
 #include <lib/log.h>
 
 int yylex();
@@ -14,7 +15,7 @@ extern char* yytext;
 int main(int argc, char* const argv[]) {
   char* input_file = NULL;
   char* output_file = NULL;
-  int lex_only = 0;
+  int show_tuples = 0;
 
   // Handle command line arguments.
   char opt;
@@ -30,21 +31,21 @@ int main(int argc, char* const argv[]) {
         output_file = optarg;
         break;
       case 'l':
-        lex_only = 1;
+        show_tuples = 1;
         break;
     }
 
   // Specify input file.
 	extern FILE *yyin;
   if (input_file && (yyin = fopen(input_file, "r")) == NULL)
-    fault("Can not open %s.", input_file);
+    fault(-EOPEN, 0, input_file);
 
   // Specify output file.
   if (output_file && (freopen(output_file, "w", stdout)) == NULL) 
-    fault("Can not open %s.", output_file);
+    fault(-EOPEN, 0, output_file);
   
   // Print all tokens and exit.
-  if (lex_only) {
+  if (show_tuples) {
     int token;
     while ((token = yylex())) {
       printf("(%s, %s)\n", token_table[token], yytext);
@@ -53,9 +54,7 @@ int main(int argc, char* const argv[]) {
   }
 
   // Parse
-	if (yyparse()) {
-    fault("yyparse() returned an error.", 0);
-	}
+	if (yyparse()) {}
 	
   return 0;
 }

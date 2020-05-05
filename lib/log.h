@@ -6,15 +6,15 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#define debug(fmt, ...) logger(fmt, "DEBUG", __FILE__, __LINE__, __VA_ARGS__)
-#define info(fmt, ...) logger(fmt, "INFO", "", 0, __VA_ARGS__)
-#define fault(fmt, ...) do {\
-  logger(fmt, "ERROR", "", 0, __VA_ARGS__);\
-  exit(1);\
-} while (0)
+#include <inc/const.h>
 
-void logger(
-  const char* fmt, const char* type, 
-  char* FILE, int LINE, ...);
+// Print a line of debug information.
+#define debug(fmt, ...) _debug(fmt, __FILE__, __LINE__, __VA_ARGS__)
+void _debug(const char* fmt, char* FILE, int LINE, ...);
+
+// Throw an error out by the error code `err`.
+// 
+// Attention: `err` must be negative!
+void fault(int err, int line, ...);
 
 #endif

@@ -4,6 +4,7 @@ LIB_SRC := \
 	parser.c\
 	ast.c\
 	log.c\
+	semantic.c\
 
 LIB_OBJ := $(patsubst %.c, $(OBJDIR)/%.o, $(LIB_SRC))
 LIB_INC := $(patsubst %.c, $(LIBDIR)/%.h, $(LIB_SRC))

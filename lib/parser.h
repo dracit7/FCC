@@ -84,28 +84,30 @@ extern int yydebug;
     CONTINUE = 290,
     IDENT = 291,
     L_INT = 292,
-    L_FLOAT = 293,
-    L_STRING = 294,
-    EXT_DEF_LIST = 295,
-    EXT_VAR_DEF = 296,
-    FUNC_DEF = 297,
-    EXT_DECL_LIST = 298,
-    FUNC_DECL = 299,
-    PARAM_LIST = 300,
-    PARAM_DEC = 301,
-    STMT_LIST = 302,
-    IF_THEN = 303,
-    IF_THEN_ELSE = 304,
-    VAR_DEF = 305,
-    DEC_LIST = 306,
-    FUNC_CALL = 307,
-    ARG_LIST = 308,
-    ARRAY_CALL = 309,
-    VAR_INIT = 310,
-    MEMBER_LIST = 311,
-    STRUCT_DEF = 312,
-    MEMBER_CALL = 313,
-    NO_ELSE = 314
+    L_CHAR = 293,
+    L_FLOAT = 294,
+    L_STRING = 295,
+    EXT_DEF_LIST = 296,
+    EXT_VAR_DEF = 297,
+    FUNC_DEF = 298,
+    EXT_DECL_LIST = 299,
+    FUNC_DECL = 300,
+    PARAM_LIST = 301,
+    PARAM_DEC = 302,
+    STMT_LIST = 303,
+    IF_THEN = 304,
+    IF_THEN_ELSE = 305,
+    VAR_DEF = 306,
+    DEC_LIST = 307,
+    FUNC_CALL = 308,
+    ARG_LIST = 309,
+    ARRAY_CALL = 310,
+    VAR_INIT = 311,
+    MEMBER_LIST = 312,
+    STRUCT_DEF = 313,
+    MEMBER_CALL = 314,
+    CODE_BLOCK = 315,
+    NO_ELSE = 316
   };
 #endif
 
@@ -113,14 +115,14 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 23 "scripts/parser.y"
+#line 24 "scripts/parser.y"
 
   int integer;
   float floatpoint;
   char* str;
   ast_node* node;
 
-#line 124 "lib/parser.h"
+#line 126 "lib/parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

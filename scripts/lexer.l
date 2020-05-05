@@ -103,7 +103,7 @@ void {return T_VOID;}
 
 {L_CHAR} {
   yylval.integer = yytext[1];
-  return L_INT;
+  return L_CHAR;
 }
 
 {L_OINT} {

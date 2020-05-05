@@ -11,6 +11,7 @@
 #include <inc/ds.h>
 
 #include <lib/ast.h>
+#include <lib/semantic.h>
 
 extern int yylineno;
 
@@ -64,6 +65,7 @@ void yyerror(const char* fmt, ...);
 
 // Literals
 %token <integer> L_INT
+%token <integer> L_CHAR
 %token <floatpoint> L_FLOAT
 %token <str> L_STRING
 
@@ -73,6 +75,7 @@ void yyerror(const char* fmt, ...);
   STMT_LIST IF_THEN IF_THEN_ELSE VAR_DEF
   DEC_LIST FUNC_CALL ARG_LIST ARRAY_CALL
   VAR_INIT MEMBER_LIST STRUCT_DEF MEMBER_CALL
+  CODE_BLOCK
 
 // Precedence for resolving the ambiguity
 // between if-else and if
@@ -83,14 +86,14 @@ void yyerror(const char* fmt, ...);
   var_type ext_decl_list var_name func_decl
   param_list param code_block stmt_list stmt
   decl decl_list var_decl expr arg_list type_void
-  member_list
+  member_list left_value
 
 %start program
 
 %%
 
 program: ext_def_list 
-    {ast_display($1, 1);}
+    {ast_display($1, 1); semantic_analysis($1);}
   ; 
 
 ext_def_list: ext_def ext_def_list
@@ -176,7 +179,7 @@ param: var_type var_name
   ;
 
 code_block: '{' stmt_list '}'
-    {$$ = $2;}
+    {$$ = ast_new_node(1, CODE_BLOCK, yylineno, $2);}
   ;
 
 stmt_list: {$$ = NULL;}  
@@ -188,6 +191,8 @@ stmt: expr ';'
     {$$ = $1;}
   | code_block
     {$$ = $1;}
+  | RETURN ';'
+    {$$ = ast_new_node(0, RETURN, yylineno);}
   | RETURN expr ';'
     {$$ = ast_new_node(1, RETURN, yylineno, $2);}
   | IF '(' expr ')' stmt %prec NO_ELSE
@@ -220,14 +225,12 @@ var_decl: var_name {$$ = $1;}
     {$$ = ast_new_node(2, VAR_INIT, yylineno, $1, $3);}
   ;
 
-expr: IDENT ASSIGN expr {
-    $$ = ast_new_node(1, ASSIGN, yylineno, $3);
-    strcpy($$->value.str, $1);
+expr: left_value ASSIGN expr {
+    $$ = ast_new_node(2, ASSIGN, yylineno, $1, $3);
   }
-  | IDENT COMP_ASSIGN expr {
-    $$ = ast_new_node(1, COMP_ASSIGN, yylineno, $3);
-    strcpy($$->value.str, $1);
-    strcat($$->value.str, $2);
+  | left_value COMP_ASSIGN expr {
+    $$ = ast_new_node(2, COMP_ASSIGN, yylineno, $1, $3);
+    strcpy($$->value.str, $2);
   }
   | expr OP_AND expr 
     {$$ = ast_new_node(2, OP_AND, yylineno, $1, $3);}
@@ -292,6 +295,10 @@ expr: IDENT ASSIGN expr {
       $$ = ast_new_node(0, L_INT, yylineno);
       $$->value.itg=$1;
     }
+  | L_CHAR {
+      $$ = ast_new_node(0, L_CHAR, yylineno);
+      $$->value.itg=$1;
+    }
   | L_FLOAT {
       $$ = ast_new_node(0, L_FLOAT, yylineno);
       $$->value.flt=$1;
@@ -299,6 +306,16 @@ expr: IDENT ASSIGN expr {
   | L_STRING {
       $$ = ast_new_node(0, L_STRING, yylineno);
       strcpy($$->value.str, $1);
+    }
+  ;
+
+left_value: IDENT {
+      $$ = ast_new_node(0, IDENT, yylineno);
+      strcpy($$->value.str, $1);
+    }
+  | expr OP_DOT IDENT {
+      $$ = ast_new_node(1, MEMBER_CALL, yylineno, $1);
+      strcpy($$->value.str, $3);
     }
   ;
 

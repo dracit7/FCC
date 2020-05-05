@@ -1,32 +1,6 @@
 
 #include <lib/ast.h>
 
-char* ast_table[] = {
-  [T_INT] = "int",
-  [T_FLOAT] = "float",
-  [T_CHAR] = "char",
-  [T_STRING] = "string",
-  [T_STRUCT] = "struct",
-  [T_VOID] = "void",
-  [OP_AND] = "Logic and",
-  [OP_OR] = "Logic or",
-  [OP_NOT] = "Logic not",
-  [OP_ADD] = "Add",
-  [OP_SUB] = "Substract",
-  [OP_STAR] = "Multiply",
-  [OP_DIV] = "Division",
-  [OP_MOD] = "Mod",
-  [OP_G] = "Is greater than",
-  [OP_L] = "Is less than",
-  [OP_GE] = "Is greater than or equal to",
-  [OP_LE] = "Is less than or equal to",
-  [OP_EQ] = "Is equal to",
-  [OP_NEQ] = "Is not equal to",
-  [OP_INC] = "Increase by 1",
-  [OP_DEC] = "Decrease by 1",
-  [UMINUS] = "Negative",
-};
-
 // Allocate a new ast node and return its address.
 ast_node* ast_new_node(int child_num, int type, int pos, ...) {
 
@@ -129,6 +103,9 @@ void ast_display(ast_node* t, int indent) {
     ast_display(t->children[0], indent+1);
     ast_display(t->children[1], indent+1);
     break;
+  case CODE_BLOCK:
+    ast_display(t->children[0], indent);
+    break;
 	case STMT_LIST:
     ast_display(t->children[0],indent);
     ast_display(t->children[1],indent);
@@ -204,6 +181,9 @@ void ast_display(ast_node* t, int indent) {
 	case L_INT:
     idtprintf(indent, "%s: %d", ast_table[T_INT], t->value.itg);
     break;
+	case L_CHAR:
+    idtprintf(indent, "%s: '%c'", ast_table[T_CHAR], t->value.itg);
+    break;
 	case L_FLOAT:
     idtprintf(indent, "%s: %f", ast_table[T_FLOAT], t->value.flt);
     break;
@@ -211,12 +191,18 @@ void ast_display(ast_node* t, int indent) {
     idtprintf(indent, "%s: %s", ast_table[T_STRING], t->value.str);
     break;
 	case ASSIGN:
-    idtprintf(indent, "Assign to %s:", t->value.str);
-    ast_display(t->children[0], indent+1);
+    idtprintf(indent, "Assign");
+    idtprintf(indent+1, "From:");
+    ast_display(t->children[1], indent+2);
+    idtprintf(indent+1, "To:");
+    ast_display(t->children[0], indent+2);
     break;
 	case COMP_ASSIGN:
-    idtprintf(indent, "%s:", t->value.str);
-    ast_display(t->children[0], indent+1);
+    idtprintf(indent, "Assign (%s)", t->value.str);
+    idtprintf(indent+1, "From:");
+    ast_display(t->children[1], indent+2);
+    idtprintf(indent+1, "To:");
+    ast_display(t->children[0], indent+2);
     break;
 	case OP_AND:
 	case OP_OR:

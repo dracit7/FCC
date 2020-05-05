@@ -2,10 +2,67 @@
 #ifndef _CONST_H
 #define _CONST_H
 
+// Semantic
 #define MAX_IDENT_LEN 64
+#define MAX_ALIAS_LEN 16
+
+#define MAX_SYMBOLTABLE_SIZE 256
+#define MAX_SYMBOLSCOPE_NUM 32
+
+#define BASE_OFFSET (3 * sizeof(int))
+
+// AST
 #define MAX_CHILD_NUM 4
 #define MAX_ARRAY_DIM 16
-
 #define INDENT_SIZE 2
+
+/*
+ * Error handling
+ */
+
+enum error_code {
+
+  // Semantic analysis
+  ENOSYMBOL = 1, // No such symbol in the symbol table.
+  ELACKARG, // Lack of arguments.
+  EEXTRAARG, // Too much arguments.
+  EWRONGARGTYPE, // Argument's type could not match parameter's.
+  EDIFFOPETYPE, // Operands' types are different.
+  EWRONGOPETYPE, // Operator does not support the operands' datatype.
+  EWRONGINITTYPE, // Initializer's type differs from variable's type.
+  EWRONGRETTYPE, // Wrong return type.
+  ENOTSTRUCT, // Operand of dot is not a struct.
+  ENOTFUNC, // Try to call a non-function identifier.
+  ENOTLEFTVALUE, // Assign to a non-left value.
+  ENOTINLOOP, // Use break or continue out of a loop.
+  EFUNCASVAR, // Use a function name as variable.
+  EDUPSYMBOL, // Duplicated name in the symbol table.
+
+  // Others
+  EOPEN, // Failed to open a file.
+};
+
+static const char* error_msg[] = {
+  [ENOSYMBOL] = "undefined identifier %s.",
+  [ELACKARG] = "%s has %d parameters but only %d arguments are passed.",
+  [EEXTRAARG] = "%s only has %d parameters but more arguments are passed.",
+  [EWRONGARGTYPE] = "Parameter %s of %s should be %s, but the type of argument is %s.",
+  [EDIFFOPETYPE] = "Operands of %s should have the same type.",
+  [EWRONGOPETYPE] = "Operands of %s can not be %s.",
+  [EWRONGINITTYPE] = "Can not use an expression with type %s to init %s %s.",
+  [EWRONGRETTYPE] = "returning '%s' from a function with return type '%s'.",
+  [ENOTSTRUCT] = "%s is not struct and has no member.",
+  [ENOTFUNC] = "%s is not a function and can not be called.",
+  [ENOTLEFTVALUE] = "assigned to a non-left data type '%s'.",
+  [ENOTINLOOP] = "%s statement not within loop.",
+  [EFUNCASVAR] = "%s is a function name, but used as a variable.",
+  [EDUPSYMBOL] = "Repeated declaration of %s.",
+  [EOPEN] = "Can not open file %s.",
+};
+
+static const char* error_src[] = {
+  [ENOSYMBOL ... EDUPSYMBOL] = "semantic",
+  [EOPEN ... EOPEN] = "others",
+};
 
 #endif

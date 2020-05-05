@@ -12,7 +12,11 @@ TESTS := $(patsubst %.c, test-%, $(TESTS_SRC))
 
 $(TESTS): all
 	@echo + $(EXECUTABLE)[TEST] $@
-	@$(BINDIR)/$(EXECUTABLE) $(BINFLAGS) -f $(patsubst test-%, $(TESTDIR)/%.c, $@)
+	@(\
+		if $(BINDIR)/$(EXECUTABLE) $(BINFLAGS) -f $(patsubst test-%, $(TESTDIR)/%.c, $@);\
+		then echo + $(EXECUTABLE)[TEST] $@ passed.;\
+		else echo + $(EXECUTABLE)[TEST] $@ failed.; fi;\
+	)
 
 test: $(TESTS)
 	

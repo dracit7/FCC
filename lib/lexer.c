@@ -1047,7 +1047,7 @@ YY_RULE_SETUP
 #line 105 "scripts/lexer.l"
 {
   yylval.integer = yytext[1];
-  return L_INT;
+  return L_CHAR;
 }
 	YY_BREAK
 case 36:

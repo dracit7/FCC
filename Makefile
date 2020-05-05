@@ -22,6 +22,10 @@ ifdef SHOW_TUPLES
 BINFLAGS += -l
 endif
 
+ifdef SHOW_STAB
+CFLAGS += -DSHOW_STAB
+endif
+
 .PHONY: all lexer parser
 
 all: setup

@@ -1,10 +1,10 @@
 
 void foo1() {}
 
-int foo2(char c) {
+int foo2(int c) {
   return c;
 }
 
-float foo3(int a, int b) {
+int foo3(int a, int b) {
   return a + b;
 }

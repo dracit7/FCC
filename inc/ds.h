@@ -66,6 +66,9 @@ typedef struct {
   // Is this variable an array?
   unsigned int isarray:1;
 
+  // If this symbol is a function, is it renturned?
+  unsigned int returned:1;
+
   // If parent_struct==x, x is the struct this symbol belongs to.
   // If parent_struct==NONE, this symbol is not a member.
   int parent_struct;

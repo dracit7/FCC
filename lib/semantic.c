@@ -204,19 +204,23 @@ static int sem_check_arg(int symbol, ast_node* T) {
   if (!ideal_num && !T) return err;
 
   // Try to match each parameter with an argument.
-  for (int i = 1; i < ideal_num; i++) {
+  for (int i = 0; i < ideal_num; i++) {
 
     // Lack of arguments.
     if (!T) {
       fault(-ELACKARG, err_pos, func_name, ideal_num, i);
       err = 1;
+      break;
     }
 
     // Wrong type of argument.
+    T->children[0]->offset = T->offset;
+    err |= sem_check_expr(T->children[0]);
     if (stab.symbols[symbol+i].dtype != T->children[0]->dtype) {
       fault(-EWRONGARGTYPE, err_pos,
-        ast_table[T->children[0]->dtype], func_name,
-        ast_table[stab.symbols[symbol+i].dtype]);
+        i + 1, func_name,
+        ast_table[stab.symbols[symbol+i].dtype],
+        ast_table[T->children[0]->dtype]);
       err = 1;
     }
 
@@ -280,6 +284,7 @@ static int sem_check_expr(ast_node* T) {
     if (sym == -ENOSYMBOL) {
       fault(-ENOSYMBOL, T->lineno, T->value.str);
       err = 1;
+      break;
     }
     
     // Function name.
@@ -321,19 +326,16 @@ static int sem_check_expr(ast_node* T) {
 
   case ASSIGN:
   case COMP_ASSIGN:
-    type = T->children[0]->type;
+    err |= sem_check_expr(T->children[0]);
+    T->children[1]->offset = T->offset;
+    err |= sem_check_expr(T->children[1]);
+    T->dtype = T->children[0]->dtype;
+    T->width = T->children[1]->width;
 
-    // Target is not a left value
-    if (!(type == IDENT || type == MEMBER_CALL)) {
-      fault(-ENOTLEFTVALUE, T->lineno, ast_table[type]);
-      T->dtype = T_INT;
+    // Type conflict
+    if (T->children[0]->dtype != T->children[1]->dtype) {
+      fault(-EDIFFOPETYPE, T->lineno, "assignment");
       err = 1;
-    } else {
-      err |= sem_check_expr(T->children[0]);
-      T->children[1]->offset = T->offset;
-      err |= sem_check_expr(T->children[1]);
-      T->dtype = T->children[0]->dtype;
-      T->width = T->children[1]->width;
     }
     break;
 
@@ -367,10 +369,14 @@ static int sem_check_expr(ast_node* T) {
 
     // Some data types does not support such operations.
     if (type == T_STRING || type_ext == T_STRING) {
-      fault(-EWRONGOPETYPE, T->lineno, ast_table[T->type], T_STRING);
+      fault(-EWRONGOPETYPE, T->lineno, ast_table[T->type], "strings");
       err = 1;
     } else if (type == T_STRUCT || type_ext == T_STRUCT) {
-      fault(-EWRONGOPETYPE, T->lineno, ast_table[T->type], T_STRUCT);
+      fault(-EWRONGOPETYPE, T->lineno, ast_table[T->type], "structs");
+      err = 1;
+    } else if (stab.symbols[T->children[0]->symbol].isarray ||
+        stab.symbols[T->children[1]->symbol].isarray) {
+      fault(-EWRONGOPETYPE, T->lineno, ast_table[T->type], "arrays");
       err = 1;
     }
 
@@ -410,9 +416,9 @@ static int sem_check_expr(ast_node* T) {
     T->symbol = stab_add_tmp(new_tmp(), cur_level, T->dtype, TEMP,
       T->offset + T->children[0]->width + T->children[1]->width);
     break;
-  case OP_NOT:
   case OP_DEC:
   case OP_INC:
+  case OP_NOT:
   case UMINUS:
     T->children[0]->offset = T->offset;
     err |= sem_check_expr(T->children[0]);
@@ -441,14 +447,15 @@ static int sem_check_expr(ast_node* T) {
     err |= sem_check_expr(T->children[0]);
 
     // Dot operator has strict requirements.
-    sym = stab_search(T->value.str);
-    if (sym == -ENOSYMBOL) {
-      fault(-ENOSYMBOL, T->lineno, T->value.str);
+    if (T->children[0]->dtype != T_STRUCT) {
+      fault(-ENOTSTRUCT, T->lineno, 
+        stab.symbols[T->children[0]->symbol].name);
       err = 1;
       break;
     }
-    if (T->children[0]->dtype != T_STRUCT) {
-      fault(-ENOTSTRUCT, T->lineno, T->children[0]->dtype);
+    sym = stab_search(T->value.str);
+    if (sym == -ENOSYMBOL) {
+      fault(-ENOSYMBOL, T->lineno, T->value.str);
       err = 1;
       break;
     }
@@ -525,7 +532,7 @@ static int sem_check_expr(ast_node* T) {
 
     // Subscript is not an integer.
     if (T->children[1]->dtype != T_INT) {
-      fault(-ENOTARRAY, T->lineno);
+      fault(-EWRONGSUBSCRIPTTYPE, T->lineno);
       err = 1;
     }
 
@@ -615,6 +622,14 @@ static int sem_check(ast_node* T) {
     err |= sem_check(T->children[2]);
     stab.symbols[T->children[1]->symbol].offset =
       T->offset + T->children[2]->width;
+    
+    // Is this function returned?
+    if (stab.symbols[T->children[1]->symbol].dtype != T_VOID &&
+      !stab.symbols[T->children[1]->symbol].returned) {
+        fault(-ENOTRETURNED, T->lineno,
+        stab.symbols[T->children[1]->symbol].name);
+      err = 1;
+    }
     break;
 
   case FUNC_DECL:
@@ -790,6 +805,8 @@ static int sem_check(ast_node* T) {
         err = 1;
       }
     }
+
+    stab.symbols[T->symbol].returned = 1;
     break;
   
   case BREAK:
@@ -824,6 +841,7 @@ static int sem_check(ast_node* T) {
 	case OP_DEC:
 	case UMINUS:
   case FUNC_CALL:
+  case ARRAY_CALL:
   case MEMBER_CALL:
     err |= sem_check_expr(T);
     break;

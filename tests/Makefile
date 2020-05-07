@@ -7,6 +7,7 @@ TESTS_SRC := \
 	operators.c\
 	comment.c\
 	control.c\
+	semantics.c\
 
 TESTS := $(patsubst %.c, test-%, $(TESTS_SRC))
 

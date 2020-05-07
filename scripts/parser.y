@@ -266,11 +266,11 @@ expr: left_value ASSIGN expr {
     {$$ = ast_new_node(1, OP_NOT, yylineno, $2);}
   | OP_INC expr 
     {$$ = ast_new_node(1, OP_INC, yylineno, $2);}
-  | expr OP_INC 
+  | left_value OP_INC 
     {$$ = ast_new_node(1, OP_INC, yylineno, $1);}
   | OP_DEC expr 
     {$$ = ast_new_node(1, OP_DEC, yylineno, $2);}
-  | expr OP_DEC 
+  | left_value OP_DEC 
     {$$ = ast_new_node(1, OP_DEC, yylineno, $1);}
   | expr OP_DOT IDENT {
       $$ = ast_new_node(1, MEMBER_CALL, yylineno, $1);
@@ -321,7 +321,7 @@ left_value: IDENT {
 
 arg_list: expr ',' arg_list 
     {$$ = ast_new_node(2, ARG_LIST, yylineno, $1, $3);}
-  | expr {$$ = $1;}
+  | expr {$$ = ast_new_node(2, ARG_LIST, yylineno, $1, 0);}
   ;
 
 %%

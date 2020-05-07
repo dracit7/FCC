@@ -34,6 +34,8 @@ static const char* ast_table[] = {
   [OP_INC] = "Increase by 1",
   [OP_DEC] = "Decrease by 1",
   [UMINUS] = "Negative",
+  [BREAK] = "Break",
+  [CONTINUE] = "Continue",
 };
 
 ast_node* ast_new_node(int child_num, int type, int pos, ...);

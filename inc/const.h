@@ -40,6 +40,7 @@ enum error_code {
   ENOTARRAY, // Try to subscript a non-array identifier.
   ENOTLEFTVALUE, // Assign to a non-left value.
   ENOTINLOOP, // Use break or continue out of a loop.
+  ENOTRETURNED, // Non-void function is not returned.
   EFUNCASVAR, // Use a function name as variable.
   EDUPSYMBOL, // Duplicated name in the symbol table.
 
@@ -51,8 +52,8 @@ static const char* error_msg[] = {
   [ENOSYMBOL] = "undefined identifier %s.",
   [ELACKARG] = "%s has %d parameters but only %d arguments are passed.",
   [EEXTRAARG] = "%s only has %d parameters but more arguments are passed.",
-  [EWRONGARGTYPE] = "Parameter %s of %s should be %s, but the type of argument is %s.",
   [EDIFFOPETYPE] = "Operands of %s should have the same type.",
+  [EWRONGARGTYPE] = "Parameter %d of %s should be %s, but the type of argument is %s.",
   [EWRONGOPETYPE] = "Operands of %s can not be %s.",
   [EWRONGINITTYPE] = "Can not use an expression with type %s to init %s %s.",
   [EWRONGRETTYPE] = "returning '%s' from a function with return type '%s'.",
@@ -63,6 +64,7 @@ static const char* error_msg[] = {
   [ENOTARRAY] = "%s is not array and can not be subscripted.",
   [ENOTLEFTVALUE] = "assigned to a non-left data type '%s'.",
   [ENOTINLOOP] = "%s statement not within loop.",
+  [ENOTRETURNED] = "non-void function %s is not returned.",
   [EFUNCASVAR] = "%s is a function name, but used as a variable.",
   [EDUPSYMBOL] = "Repeated declaration of %s.",
   [EOPEN] = "Can not open file %s.",

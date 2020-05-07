@@ -765,6 +765,8 @@ static int sem_check(ast_node* T) {
     break;
     
   case FOR:
+    cur_level++;
+    stab.scope_begin[stab.cur_scope++] = stab.size;
     T->children[0]->offset = T->children[1]->offset = 
     T->children[2]->offset = T->children[3]->offset = T->offset;
     T->children[0]->symbol = T->symbol;
@@ -782,6 +784,8 @@ static int sem_check(ast_node* T) {
     err |= sem_check(T->children[3]);
     if (T->width < T->children[3]->width)
       T->width = T->children[3]->width;
+    cur_level--;
+    stab.size = stab.scope_begin[--stab.cur_scope];
     break;
     
   case RETURN:
@@ -855,7 +859,7 @@ void semantic_analysis(ast_node* T) {
 
   // Initialize the symbol table.
   stab.size = 0;
-  stab_add("read", "-", 0, T_INT, FUNC, 0);
+  stab_add("read", "-", 0, T_INT, FUNC, 4);
   stab.symbols[0].param_num = 0;
   stab_add("write", "-", 0, T_INT, FUNC, 4);
   stab.symbols[0].param_num = 1;

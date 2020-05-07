@@ -14,4 +14,5 @@ int main() {
   foo!=4;
   foo>=5;
   foo<=6;
+  return 0;
 }

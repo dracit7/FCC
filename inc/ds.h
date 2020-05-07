@@ -39,8 +39,8 @@ typedef struct _node {
   int parent_struct;
 
   // Members for generating TAC.
-  int offset; // Offset in the segment.
-  int width; // Bit width.
+  int offset; // See 'offset' in symbol_table_entry.
+  int width; // Width of this unit in bytes.
 
 } ast_node;
 
@@ -59,8 +59,9 @@ typedef struct {
   // The number of paramaters.
   int param_num;
 
-  // The offset in the segment, useful when generating
-  // object code.
+  // The offset of external variables in the static segment;
+  // The offset of local variables in the stack frame;
+  // The size of function's stack frame.
   int offset;
 
   // Is this variable an array?

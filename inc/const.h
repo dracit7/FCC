@@ -2,6 +2,8 @@
 #ifndef _CONST_H
 #define _CONST_H
 
+#define NONE 0
+
 // Semantic
 #define MAX_IDENT_LEN 64
 #define MAX_ALIAS_LEN 16
@@ -31,8 +33,11 @@ enum error_code {
   EWRONGOPETYPE, // Operator does not support the operands' datatype.
   EWRONGINITTYPE, // Initializer's type differs from variable's type.
   EWRONGRETTYPE, // Wrong return type.
+  EWRONGSUBSCRIPTTYPE, // Wrong array subscript type.
   ENOTSTRUCT, // Operand of dot is not a struct.
+  ENOTMEMBER, // Right operand of dot is not the member of left operand.
   ENOTFUNC, // Try to call a non-function identifier.
+  ENOTARRAY, // Try to subscript a non-array identifier.
   ENOTLEFTVALUE, // Assign to a non-left value.
   ENOTINLOOP, // Use break or continue out of a loop.
   EFUNCASVAR, // Use a function name as variable.
@@ -51,8 +56,11 @@ static const char* error_msg[] = {
   [EWRONGOPETYPE] = "Operands of %s can not be %s.",
   [EWRONGINITTYPE] = "Can not use an expression with type %s to init %s %s.",
   [EWRONGRETTYPE] = "returning '%s' from a function with return type '%s'.",
+  [EWRONGSUBSCRIPTTYPE] = "array subscript is not an integer.",
   [ENOTSTRUCT] = "%s is not struct and has no member.",
+  [ENOTMEMBER] = "%s is not the member of %s.",
   [ENOTFUNC] = "%s is not a function and can not be called.",
+  [ENOTARRAY] = "%s is not array and can not be subscripted.",
   [ENOTLEFTVALUE] = "assigned to a non-left data type '%s'.",
   [ENOTINLOOP] = "%s statement not within loop.",
   [EFUNCASVAR] = "%s is a function name, but used as a variable.",

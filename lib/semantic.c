@@ -10,6 +10,7 @@ static int cur_level;
 
 static int sem_check_var_list(ast_node* T);
 static int sem_check_arg(int symbol, ast_node* T);
+static int sem_check_struct(ast_node* T);
 static int sem_check_expr(ast_node* T);
 static int sem_check(ast_node* T);
 
@@ -32,15 +33,16 @@ static char* new_tmp() {
 // Display the symbol table.
 void stab_display() {
   PRINT_BORDER();
-  printf("| %-13s | %-8s | %s | %-6s | %-10s | %s |\n",
-    "Name", "Alias", "Level", "DType", "SType", "Offset"
+  printf("| %s | %-13s | %-5s | %s | %-6s | %-9s | %s |\n",
+    "ID", "Name", "Alias", "Level", "DType", "SType", "Offset"
   );
   PRINT_BORDER();
 
   for (int i = 0; i < stab.size; i++) {
     char* dots = (strlen(stab.symbols[i].name) > 10) ?
       "..." : "   ";
-    printf("| %-10.10s%s | %-8s | %-5d | %-6s | %-10s | %-6d |\n",
+    printf("| %-2d | %-10.10s%s | %-5s | %-5d | %-6s | %-9s | %-6d |\n",
+      i,
       stab.symbols[i].name,
       dots,
       stab.symbols[i].alias,
@@ -130,6 +132,10 @@ static int sem_check_var_list(ast_node* T) {
 
     // Pass the type and offset information downward.
     T->children[0]->dtype = T->children[1]->dtype = T->dtype;
+    T->children[0]->parent_struct = 
+    T->children[1]->parent_struct = T->parent_struct;
+    T->children[0]->symbol = 
+    T->children[1]->symbol = T->symbol;
     T->children[0]->offset = T->offset;
     T->children[1]->offset = T->offset + T->width;
     T->children[1]->width = T->width;
@@ -147,9 +153,21 @@ static int sem_check_var_list(ast_node* T) {
     if (sym == -EDUPSYMBOL) {
       fault(-EDUPSYMBOL, T->lineno, T->value.str);
       err = 1;
+    } else {
+      // If this variable is a struct member
+      // or a struct variable
+      if (T->symbol) {
+        stab.symbols[sym].struct_type = T->symbol;
+      }
+      if (T->parent_struct) {
+        stab.symbols[sym].parent_struct = T->parent_struct;
+      }
+      T->symbol = sym;
     }
-    else T->symbol = sym;
     T->num = 1;
+
+    // Is this identifier an array?
+    if (T->dim > 0) stab.symbols[sym].isarray = 1;
     break;
   
   case VAR_INIT:
@@ -214,6 +232,40 @@ static int sem_check_arg(int symbol, ast_node* T) {
   return err;
 }
 
+// Semantic check: struct variable declaration.
+static int sem_check_struct(ast_node* T) {
+  int sym, err = 0;
+
+  // Define a struct and declear corresponding
+  // variables right away.
+  if (T->children[0]) {
+    sym = stab_add(T->value.str, new_alias(), cur_level,
+      T_STRUCT, STRUCT, T->offset);
+    if (sym == -EDUPSYMBOL) {
+      fault(-EDUPSYMBOL, T->lineno, T->value.str);
+      return err;
+    }
+
+    T->symbol = sym;
+    T->children[0]->parent_struct = sym;
+    T->children[0]->offset = T->offset;
+    err |= sem_check(T->children[0]);
+    T->width = T->children[0]->width;
+
+  // Use a pre-defined struct.
+  } else {
+    sym = stab_search(T->value.str);
+    if (sym == -ENOSYMBOL) {
+      fault(-ENOSYMBOL, T->lineno, T->value.str);
+      return err;
+    }
+
+    T->symbol = sym;
+  }
+  
+  return err;
+}
+
 // Semantic check: expressions.
 static int sem_check_expr(ast_node* T) {
   int sym;
@@ -268,6 +320,7 @@ static int sem_check_expr(ast_node* T) {
     break;
 
   case ASSIGN:
+  case COMP_ASSIGN:
     type = T->children[0]->type;
 
     // Target is not a left value
@@ -382,19 +435,34 @@ static int sem_check_expr(ast_node* T) {
     T->symbol = stab_add_tmp(new_tmp(), cur_level, T->dtype, TEMP,
       T->offset + T->children[0]->width);
     break;
-  case OP_DOT:
+
+  case MEMBER_CALL:
     T->children[0]->offset = T->offset;
     err |= sem_check_expr(T->children[0]);
-    T->children[1]->offset = T->offset + T->children[0]->width;
-    err |= sem_check_expr(T->children[1]);
 
     // Dot operator has strict requirements.
+    sym = stab_search(T->value.str);
+    if (sym == -ENOSYMBOL) {
+      fault(-ENOSYMBOL, T->lineno, T->value.str);
+      err = 1;
+      break;
+    }
     if (T->children[0]->dtype != T_STRUCT) {
       fault(-ENOTSTRUCT, T->lineno, T->children[0]->dtype);
       err = 1;
-    } // TODO: check if T->children[1] is T->children[0]'s member
+      break;
+    }
+    if (stab.symbols[sym].parent_struct != 
+      stab.symbols[T->children[0]->symbol].struct_type) {
+      fault(-ENOTMEMBER, T->lineno,
+        stab.symbols[sym].name,
+        stab.symbols[T->children[0]->symbol].name
+      );
+      err = 1;
+    }
 
-    T->dtype = T->children[1]->dtype;
+    T->dtype = stab.symbols[sym].dtype;
+    T->symbol = sym;
     break;
 
   case FUNC_CALL:
@@ -441,6 +509,28 @@ static int sem_check_expr(ast_node* T) {
       T->width += T->children[1]->width;
     }
     break;
+  
+  case ARRAY_CALL:
+    T->children[0]->offset = T->offset;
+    err |= sem_check_expr(T->children[0]);
+    T->symbol = T->children[0]->symbol;
+    T->children[1]->offset = T->offset + T->children[0]->width;
+    err |= sem_check_expr(T->children[1]);
+
+    // Identifier is not an array variable.
+    if (!stab.symbols[T->symbol].isarray) {
+      fault(-ENOTARRAY, T->lineno, T->children[0]->value.str);
+      err = 1;
+    }
+
+    // Subscript is not an integer.
+    if (T->children[1]->dtype != T_INT) {
+      fault(-ENOTARRAY, T->lineno);
+      err = 1;
+    }
+
+    T->dtype = T->children[0]->dtype;
+    break;
   }
 
   return err;
@@ -464,11 +554,54 @@ static int sem_check(ast_node* T) {
 
   case EXT_VAR_DEF:
   case VAR_DEF:
+    if (T->children[0]->type == T_STRUCT) {
+      sem_check_struct(T->children[0]);
+      T->children[1]->symbol = T->children[0]->symbol;
+    }
+    
     T->dtype = T->children[1]->dtype = T->children[0]->type;
     T->children[1]->offset = T->offset;
     T->children[1]->width = WIDTH(T->dtype);
     err |= sem_check_var_list(T->children[1]);
     T->width = WIDTH(T->dtype) * T->children[1]->num;
+    break;
+  
+  case STRUCT_DEF:
+    sym = stab_add(T->value.str, new_alias(), cur_level,
+      T_STRUCT, STRUCT, BASE_OFFSET);
+    if (sym == -EDUPSYMBOL) {
+      fault(-EDUPSYMBOL, T->lineno, T->value.str);
+      err = 1;
+      break;
+    }
+
+    T->symbol = sym;
+    T->offset = BASE_OFFSET;
+    if (T->children[0]) {
+      T->children[0]->parent_struct = sym;
+      T->children[0]->offset = T->offset;
+      err |= sem_check(T->children[0]);
+      T->width = T->children[0]->width;
+    } 
+    break;
+
+  case MEMBER_LIST:
+    if (T->children[0]->type == T_STRUCT) {
+      sem_check_struct(T->children[0]);
+      T->children[1]->symbol = T->children[0]->symbol;
+    }
+
+    T->dtype = T->children[1]->dtype = T->children[0]->type;
+    T->children[1]->offset = T->offset;
+    T->children[1]->width = WIDTH(T->dtype);
+    T->children[1]->parent_struct = T->parent_struct;
+    err |= sem_check_var_list(T->children[1]);
+    T->width = WIDTH(T->dtype) * T->children[1]->num;
+    if (T->children[2]) {
+      T->children[2]->parent_struct = T->parent_struct;
+      T->children[2]->offset = T->offset + T->children[0]->width;
+      err |= sem_check(T->children[2]);
+    }
     break;
   
   case FUNC_DEF:
@@ -500,8 +633,6 @@ static int sem_check(ast_node* T) {
       err |= sem_check(T->children[0]);
       T->width = T->children[0]->width;
       stab.symbols[sym].param_num = T->children[0]->num;
-    } else {
-      T->width = 0;
     }
     break;
   
@@ -520,11 +651,20 @@ static int sem_check(ast_node* T) {
     break;
   
   case PARAM_DEC:
+    if (T->children[0]->type == T_STRUCT) {
+      sem_check_struct(T->children[0]);
+    }
+    
     sym = stab_add(T->children[1]->value.str, new_alias(),
       1, T->children[0]->type, PARAM, T->offset);
     if (sym == -EDUPSYMBOL) {
       fault(-EDUPSYMBOL, T->lineno, T->value.str);
       err = 1;
+    } else {
+      // If this param is a struct variable
+      if (T->children[0]->symbol) {
+        stab.symbols[sym].struct_type = T->children[0]->symbol;
+      }
     }
     
     T->children[1]->symbol = sym;
@@ -684,6 +824,7 @@ static int sem_check(ast_node* T) {
 	case OP_DEC:
 	case UMINUS:
   case FUNC_CALL:
+  case MEMBER_CALL:
     err |= sem_check_expr(T);
     break;
   }
@@ -696,7 +837,7 @@ void semantic_analysis(ast_node* T) {
 
   // Initialize the symbol table.
   stab.size = 0;
-  stab_add("read", "-", 0, T_INT, FUNC, 4);
+  stab_add("read", "-", 0, T_INT, FUNC, 0);
   stab.symbols[0].param_num = 0;
   stab_add("write", "-", 0, T_INT, FUNC, 4);
   stab.symbols[0].param_num = 1;

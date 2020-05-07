@@ -34,6 +34,10 @@ typedef struct _node {
   int num; // Number of parameters of variables.
   int looping; // If we're in a loop.
 
+  // Symbol index of the parent structure of
+  // this variable.
+  int parent_struct;
+
   // Members for generating TAC.
   int offset; // Offset in the segment.
   int width; // Bit width.
@@ -46,7 +50,7 @@ typedef struct {
 
   // Data type and symbol type of this symbol.
   int dtype;
-  char stype;
+  unsigned int stype:3;
 
   // Name and alias of this symbol.
   char name[MAX_IDENT_LEN];
@@ -58,6 +62,18 @@ typedef struct {
   // The offset in the segment, useful when generating
   // object code.
   int offset;
+
+  // Is this variable an array?
+  unsigned int isarray:1;
+
+  // If parent_struct==x, x is the struct this symbol belongs to.
+  // If parent_struct==NONE, this symbol is not a member.
+  int parent_struct;
+
+  // If this symbol is a struct variable,
+  // this member indicates the index of the
+  // corresponding struct symbol.
+  int struct_type;
 
 } symbol_table_entry;
 
@@ -72,7 +88,7 @@ typedef struct {
 } symbol_table;
 
 enum symbol_types {
-  FUNC, VAR, PARAM, TEMP
+  FUNC, VAR, PARAM, TEMP, STRUCT
 };
 
 static const char* symbol_name[] = {
@@ -80,6 +96,7 @@ static const char* symbol_name[] = {
   [VAR] = "variable",
   [PARAM] = "parameter",
   [TEMP] = "literal",
+  [STRUCT] = "struct",
 };
 
 #endif

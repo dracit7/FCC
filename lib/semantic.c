@@ -179,9 +179,10 @@ static int sem_check_var_list(ast_node* T) {
     err |= sem_check_expr(T->children[1]);
 
     // Check the type of initializer.
-    if (T->dtype != T->children[1]->dtype) {
-      fault(-EWRONGINITTYPE, T->lineno, T->children[1]->type,
-        T->type, T->children[0]->value.str);
+    if (T->dtype != T->children[1]->dtype || 
+    stab.symbols[T->children[0]->symbol].isarray) {
+      fault(-EWRONGINITTYPE, T->lineno,
+        ast_table[T->children[1]->dtype], T->children[0]->value.str);
       err = 1;
     }
 

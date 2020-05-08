@@ -96,6 +96,12 @@ void {return T_VOID;}
 {CONTINUE} {return CONTINUE;}
 
 	/* Literals */
+  
+{L_FLOAT} {
+  yylval.floatpoint = atof(yytext);
+  return L_FLOAT;
+}
+
 {L_INT} {
   yylval.integer = strtol(yytext, NULL, 10);
   return L_INT;
@@ -114,11 +120,6 @@ void {return T_VOID;}
 {L_HINT} {
   yylval.integer = strtol(yytext+2, NULL, 16);
   return L_INT;
-}
-
-{L_FLOAT} {
-  yylval.floatpoint = atof(yytext);
-  return L_FLOAT;
 }
 
 {L_STRING} {

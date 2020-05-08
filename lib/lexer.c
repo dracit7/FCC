@@ -384,14 +384,14 @@ static const flex_int16_t yy_accept[123] =
     {   0,
         0,    0,    0,    0,    0,    0,   49,   47,   45,   46,
        13,   47,   12,   47,   47,    7,   10,    8,    9,   14,
-       11,   34,   34,   16,   25,   15,   40,   40,   40,   40,
+       11,   35,   35,   16,   25,   15,   40,   40,   40,   40,
        40,   40,   40,   40,   40,   40,   47,   44,   48,   44,
        20,    0,   39,    0,   26,   21,    0,    0,   23,   24,
-       38,   42,    0,    0,   36,    0,    0,   34,   18,   19,
+       34,   42,    0,    0,   37,    0,    0,   35,   18,   19,
        17,   40,   40,   40,   40,   40,   40,   40,   27,   40,
-       40,   40,   40,   40,   22,   43,   35,   38,   38,   38,
-        0,   41,   37,   37,   40,   40,   40,   40,   40,   31,
-        2,   40,   40,   40,   40,   38,   38,   37,   40,    1,
+       40,   40,   40,   40,   22,   43,   36,   34,   34,   34,
+        0,   41,   38,   38,   40,   40,   40,   40,   40,   31,
+        2,   40,   40,   40,   40,   34,   34,   38,   40,    1,
 
        40,   28,   40,   40,   40,   40,    6,   40,   32,   40,
         3,   40,   40,   40,   30,   40,   29,    4,    5,   40,
@@ -1036,48 +1036,48 @@ YY_RULE_SETUP
 /* Literals */
 case 34:
 YY_RULE_SETUP
-#line 100 "scripts/lexer.l"
-{
-  yylval.integer = strtol(yytext, NULL, 10);
-  return L_INT;
-}
-	YY_BREAK
-case 35:
-YY_RULE_SETUP
-#line 105 "scripts/lexer.l"
-{
-  yylval.integer = yytext[1];
-  return L_CHAR;
-}
-	YY_BREAK
-case 36:
-YY_RULE_SETUP
-#line 110 "scripts/lexer.l"
-{
-  yylval.integer = strtol(yytext+1, NULL, 8);
-  return L_INT;
-}
-	YY_BREAK
-case 37:
-YY_RULE_SETUP
-#line 115 "scripts/lexer.l"
-{
-  yylval.integer = strtol(yytext+2, NULL, 16);
-  return L_INT;
-}
-	YY_BREAK
-case 38:
-YY_RULE_SETUP
-#line 120 "scripts/lexer.l"
+#line 101 "scripts/lexer.l"
 {
   yylval.floatpoint = atof(yytext);
   return L_FLOAT;
 }
 	YY_BREAK
+case 35:
+YY_RULE_SETUP
+#line 106 "scripts/lexer.l"
+{
+  yylval.integer = strtol(yytext, NULL, 10);
+  return L_INT;
+}
+	YY_BREAK
+case 36:
+YY_RULE_SETUP
+#line 111 "scripts/lexer.l"
+{
+  yylval.integer = yytext[1];
+  return L_CHAR;
+}
+	YY_BREAK
+case 37:
+YY_RULE_SETUP
+#line 116 "scripts/lexer.l"
+{
+  yylval.integer = strtol(yytext+1, NULL, 8);
+  return L_INT;
+}
+	YY_BREAK
+case 38:
+YY_RULE_SETUP
+#line 121 "scripts/lexer.l"
+{
+  yylval.integer = strtol(yytext+2, NULL, 16);
+  return L_INT;
+}
+	YY_BREAK
 case 39:
 /* rule 39 can match eol */
 YY_RULE_SETUP
-#line 125 "scripts/lexer.l"
+#line 126 "scripts/lexer.l"
 {
   yylval.str = strdup(yytext);
   return L_STRING;
@@ -1086,7 +1086,7 @@ YY_RULE_SETUP
 /* Identifiers */
 case 40:
 YY_RULE_SETUP
-#line 131 "scripts/lexer.l"
+#line 132 "scripts/lexer.l"
 {
   yylval.str = strdup(yytext);
   return IDENT;
@@ -1096,44 +1096,44 @@ YY_RULE_SETUP
 case 41:
 /* rule 41 can match eol */
 YY_RULE_SETUP
-#line 137 "scripts/lexer.l"
+#line 138 "scripts/lexer.l"
 {}
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 138 "scripts/lexer.l"
+#line 139 "scripts/lexer.l"
 {BEGIN(COMMENT);}
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 139 "scripts/lexer.l"
+#line 140 "scripts/lexer.l"
 {BEGIN(NOT_COMMENT);}
 	YY_BREAK
 case YY_STATE_EOF(COMMENT):
-#line 140 "scripts/lexer.l"
+#line 141 "scripts/lexer.l"
 {
   printf("Error: comment not terminated.\n");
 }
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 143 "scripts/lexer.l"
+#line 144 "scripts/lexer.l"
 {}
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 145 "scripts/lexer.l"
+#line 146 "scripts/lexer.l"
 {}
 	YY_BREAK
 case 46:
 /* rule 46 can match eol */
 YY_RULE_SETUP
-#line 147 "scripts/lexer.l"
+#line 148 "scripts/lexer.l"
 {yycolumn = 1;}
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 149 "scripts/lexer.l"
+#line 150 "scripts/lexer.l"
 {
   printf("Error: unregonized word %s(%d) at line %d\n", 
   yytext, yytext[0], yylineno);
@@ -1141,7 +1141,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 154 "scripts/lexer.l"
+#line 155 "scripts/lexer.l"
 ECHO;
 	YY_BREAK
 #line 1148 "lib/lexer.c"
@@ -2162,7 +2162,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 154 "scripts/lexer.l"
+#line 155 "scripts/lexer.l"
 
 
 int yywrap() {return 1;}

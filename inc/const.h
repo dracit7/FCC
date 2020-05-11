@@ -4,6 +4,10 @@
 
 #define NONE 0
 
+// Globak
+#define PROJECT_NAME "minic"
+#define LIST_INIT_SIZE 8
+
 // Semantic
 #define MAX_IDENT_LEN 64
 #define MAX_ALIAS_LEN 16

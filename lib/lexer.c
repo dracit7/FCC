@@ -1,6 +1,6 @@
-#line 2 "lib/lexer.c"
+#line 1 "lib/lexer.c"
 
-#line 4 "lib/lexer.c"
+#line 3 "lib/lexer.c"
 
 #define  YY_INT_ALIGNED short int
 
@@ -567,13 +567,13 @@ int yycolumn = 1;
 
 void lexer_routine();
 #define YY_USER_ACTION lexer_routine();
-#line 571 "lib/lexer.c"
+#line 570 "lib/lexer.c"
 /* Operators */
 /* Keywords */
 /* Literals */
 /* Comments */
 
-#line 577 "lib/lexer.c"
+#line 576 "lib/lexer.c"
 
 #define INITIAL 0
 #define NOT_COMMENT 1
@@ -796,7 +796,7 @@ YY_DECL
 
 #line 57 "scripts/lexer.l"
   /* Data types */
-#line 800 "lib/lexer.c"
+#line 799 "lib/lexer.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -1144,7 +1144,7 @@ YY_RULE_SETUP
 #line 155 "scripts/lexer.l"
 ECHO;
 	YY_BREAK
-#line 1148 "lib/lexer.c"
+#line 1147 "lib/lexer.c"
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(NOT_COMMENT):
 	yyterminate();

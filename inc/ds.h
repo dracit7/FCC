@@ -5,48 +5,37 @@
 #include <stdint.h>
 #include <inc/const.h>
 
-// The node of AST.
-//
-// Use a binary linked list to implement the tree.
-typedef struct _node {
-  int type;
+#include <llvm-c/Core.h>
 
-  // Value of this node, only valid in leaves.
-  union {
-    char str[MAX_IDENT_LEN];
-    double flt;
-    uint64_t itg;
-  } value;
-
-  // Dim and capacity of this node, only valid in arrays.
-  int dim;
-  int capacity[MAX_ARRAY_DIM];
-
-  // Children of this node.
-  struct _node* children[MAX_CHILD_NUM];
-
-  // Line number information.
-  int lineno;
-
-  // Members used in semantic analysis.
-  int dtype; // Identifier's datatype. 
-  int symbol; // The index in the symbol table.
-  int num; // Number of parameters of variables.
-  int looping; // If we're in a loop.
-
-  // Symbol index of the parent structure of
-  // this variable.
-  int parent_struct;
-
-  // Members for generating TAC.
-  int offset; // See 'offset' in symbol_table_entry.
-  int width; // Width of this unit in bytes.
-
-} ast_node;
+/*
+ * The symbol table
+ * 
+ * We organize the symbol table in a form of scope
+ * stack - each scope only contains symbols declared
+ * in itself, and all symbols in current stack is
+ * visible to current scope.
+ * 
+ * When we enter a new scope, we store it in the scope
+ * array and push its id to the scope stack. Similarly,
+ * we pop the scope id when we exit.
+ * 
+ * In this form, the scope layer is naturally represented
+ * by the index of stack, so we don't need the `level`
+ * field in symbol_table_entry.
+ * 
+ * The structure of scope stack:
+ * 
+ * +--------------------------------+
+ * |        Global symbols          |
+ * +--------------------------------+
+ * | Parameters of current function |
+ * +--------------------------------+
+ * |              ...               |
+ * +--------------------------------+    
+ */
 
 // The symbol table entry.
 typedef struct {
-  int level;
 
   // Data type and symbol type of this symbol.
   int dtype;
@@ -79,18 +68,44 @@ typedef struct {
   // corresponding struct symbol.
   int struct_type;
 
+  // Type reference in LLVM.
+  LLVMTypeRef llvm_type;
+
 } symbol_table_entry;
 
-// The symbol table.
+// A scope of the symbol table.
 typedef struct {
   symbol_table_entry symbols[MAX_SYMBOLTABLE_SIZE];
   int size;
+} symbol_scope;
 
-  // The scopes of symbol table.
-  int scope_begin[MAX_SYMBOLSCOPE_NUM];
-  int cur_scope;
+// Stack of scope indexes.
+typedef struct {
+  int* arr;
+  uint32_t len;
+  uint32_t cap;
+} index_list;
+
+// Stack of scopes.
+typedef struct {
+  symbol_scope* arr;
+  uint32_t len;
+  uint32_t cap;
+} scope_list;
+
+// The symbol table.
+typedef struct {
+  scope_list* scopes;
+  index_list* stack;
 } symbol_table;
 
+// The index of the symbol table.
+typedef uint64_t st_index;
+#define ST_INDEX(i, j) ((((uint64_t)i)<<32)^((uint64_t)j))
+#define SCOPE_I(index) ((uint32_t)(index>>32))
+#define SYMBOL_I(index) ((uint32_t)(index))
+
+// The types of symbols.
 enum symbol_types {
   FUNC, VAR, PARAM, TEMP, STRUCT
 };
@@ -102,5 +117,99 @@ static const char* symbol_name[] = {
   [TEMP] = "literal",
   [STRUCT] = "struct",
 };
+
+/*
+ * Data structures to fit up with LLVM.
+ * 
+ * We use LLVM to generate IR code and target code.
+ */
+
+// List of LLVMTypeRef.
+typedef struct {
+  LLVMTypeRef* arr;
+  uint32_t len;
+  uint32_t cap;
+} type_list;
+
+/*
+ * AST
+ */
+
+// The node of AST.
+//
+// Use a binary linked list to implement the tree.
+typedef struct _node {
+  int type;
+
+  // Value of this node, only valid in leaves.
+  union {
+    char str[MAX_IDENT_LEN];
+    double flt;
+    uint64_t itg;
+  } value;
+
+  // Dim and capacity of this node, only valid in arrays.
+  int dim;
+  int capacity[MAX_ARRAY_DIM];
+
+  // Children of this node.
+  struct _node* children[MAX_CHILD_NUM];
+
+  // Line number information.
+  int lineno;
+
+  // Members used in semantic analysis.
+  st_index symbol; // The index in the symbol table.
+  int dtype; // Identifier's datatype. 
+  int num; // Number of parameters of variables.
+  int looping; // If we're in a loop.
+
+  // Symbol index of the parent structure of
+  // this variable.
+  int parent_struct;
+
+  // Members for generating TAC.
+  int offset; // See 'offset' in symbol_table_entry.
+  int width; // Width of this unit in bytes.
+
+  // Member for LLVM.
+  LLVMTypeRef ret_type;
+  type_list* llvm_types;
+
+} ast_node;
+
+/*
+ * A set of list API
+ */
+
+// Allocate a new list and return its address.
+#define LIST_NEW(list_type, element_type) ({\
+  list_type* l = (list_type *)malloc(sizeof(list_type));\
+  l->arr = (element_type *)malloc(sizeof(element_type)*LIST_INIT_SIZE);\
+  l->len = 0;\
+  l->cap = LIST_INIT_SIZE;\
+  (l);\
+})
+
+// Length and index functions.
+#define LEN(list) ((list)->len)
+#define NTH(list, n) ((list)->arr[n])
+
+// Stack functions.
+#define LIST_TOP(list) NTH(list, LEN(list)-1)
+#define LIST_POP(list) ((list)->len--)
+#define LIST_PUSH(list, element, element_type) do {\
+  if ((list)->len == (list)->cap) {\
+    (list)->cap *= 2;\
+    (list)->arr = (element_type *)realloc((list)->arr, sizeof(element_type)*(list)->cap);\
+  }\
+  (list)->arr[(list)->len++] = element;\
+} while (0)
+
+// Free the list.
+#define LIST_FREE(list) do {\
+  free((list)->arr);\
+  free(list);\
+} while (0)
 
 #endif

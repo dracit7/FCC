@@ -1,6 +1,11 @@
 
 int main() {
   int foo = 0;
+
+  if (2 > 1) {
+    foo = 1;
+  }
+
   if (2 > 1) {
     foo = 3*2-1;
   } else {
@@ -14,5 +19,5 @@ int main() {
   for (int i = 0; i < 10; i++) {
     foo += i;
   }
-  return 0;
+  return foo;
 }

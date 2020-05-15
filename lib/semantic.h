@@ -61,5 +61,6 @@
 
 void semantic_analysis(ast_node* T);
 void stab_display();
+st_index stab_search(char *name);
 
 #endif

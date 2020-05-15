@@ -12,9 +12,10 @@
 int yylex();
 extern char* yytext;
 
+char* input_file;
+char* output_file;
+
 int main(int argc, char* const argv[]) {
-  char* input_file = NULL;
-  char* output_file = NULL;
   int show_tuples = 0;
 
   // Handle command line arguments.

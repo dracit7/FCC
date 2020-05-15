@@ -1,14 +1,14 @@
 
 struct foo {
-  int a;
-  float b, c;
+  int a, b, c;
+  float d;
   struct {
     char t;
   } s;
-};
+} f;
 
-int geta(struct foo f) {
-  f.b += 3.14;
+int geta() {
+  f.a += 3;
   f.s.t = 'c'; 
   return f.a;
 }

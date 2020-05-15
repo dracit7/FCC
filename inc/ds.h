@@ -34,6 +34,12 @@
  * +--------------------------------+    
  */
 
+// The index of the symbol table.
+typedef uint64_t st_index;
+#define ST_INDEX(i, j) ((((uint64_t)i)<<32)^((uint64_t)j))
+#define SCOPE_I(index) ((uint32_t)(index>>32))
+#define SYMBOL_I(index) ((uint32_t)(index))
+
 // The symbol table entry.
 typedef struct {
 
@@ -53,23 +59,25 @@ typedef struct {
   // The size of function's stack frame.
   int offset;
 
-  // Is this variable an array?
-  unsigned int isarray:1;
+  // Array dimension and capacity.
+  int dim;
+  int capacity[MAX_ARRAY_DIM];
 
   // If this symbol is a function, is it renturned?
   unsigned int returned:1;
 
   // If parent_struct==x, x is the struct this symbol belongs to.
   // If parent_struct==NONE, this symbol is not a member.
-  int parent_struct;
+  st_index parent_struct;
 
   // If this symbol is a struct variable,
   // this member indicates the index of the
   // corresponding struct symbol.
-  int struct_type;
+  st_index struct_type;
 
-  // Type reference in LLVM.
+  // Reference in LLVM.
   LLVMTypeRef llvm_type;
+  LLVMValueRef llvm_value;
 
 } symbol_table_entry;
 
@@ -99,12 +107,6 @@ typedef struct {
   index_list* stack;
 } symbol_table;
 
-// The index of the symbol table.
-typedef uint64_t st_index;
-#define ST_INDEX(i, j) ((((uint64_t)i)<<32)^((uint64_t)j))
-#define SCOPE_I(index) ((uint32_t)(index>>32))
-#define SYMBOL_I(index) ((uint32_t)(index))
-
 // The types of symbols.
 enum symbol_types {
   FUNC, VAR, PARAM, TEMP, STRUCT
@@ -130,6 +132,13 @@ typedef struct {
   uint32_t len;
   uint32_t cap;
 } type_list;
+
+// List of LLVMValueRef.
+typedef struct {
+  LLVMValueRef* arr;
+  uint32_t len;
+  uint32_t cap;
+} value_list;
 
 /*
  * AST
@@ -162,19 +171,22 @@ typedef struct _node {
   st_index symbol; // The index in the symbol table.
   int dtype; // Identifier's datatype. 
   int num; // Number of parameters of variables.
-  int looping; // If we're in a loop.
+  unsigned looping:1; // If we're in a loop.
+  unsigned external:1; // If the variable is external.
 
   // Symbol index of the parent structure of
   // this variable.
-  int parent_struct;
+  st_index parent_struct;
 
   // Members for generating TAC.
   int offset; // See 'offset' in symbol_table_entry.
   int width; // Width of this unit in bytes.
 
   // Member for LLVM.
-  LLVMTypeRef ret_type;
-  type_list* llvm_types;
+  LLVMTypeRef llvm_type;
+  LLVMValueRef llvm_value;
+  type_list* llvm_argtypes;
+  value_list* llvm_args;
 
 } ast_node;
 
@@ -186,6 +198,7 @@ typedef struct _node {
 #define LIST_NEW(list_type, element_type) ({\
   list_type* l = (list_type *)malloc(sizeof(list_type));\
   l->arr = (element_type *)malloc(sizeof(element_type)*LIST_INIT_SIZE);\
+  memset(l->arr, 0, LIST_INIT_SIZE);\
   l->len = 0;\
   l->cap = LIST_INIT_SIZE;\
   (l);\
@@ -202,6 +215,7 @@ typedef struct _node {
   if ((list)->len == (list)->cap) {\
     (list)->cap *= 2;\
     (list)->arr = (element_type *)realloc((list)->arr, sizeof(element_type)*(list)->cap);\
+    memset((list)->arr, 0, (list)->cap);\
   }\
   (list)->arr[(list)->len++] = element;\
 } while (0)

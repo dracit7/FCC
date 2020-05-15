@@ -12,8 +12,11 @@
 
 #include <lib/ast.h>
 #include <lib/semantic.h>
+#include <lib/llvm.h>
 
 extern int yylineno;
+extern char* input_file;
+extern char* output_file;
 
 int yylex();
 void yyerror(const char* fmt, ...);
@@ -92,8 +95,11 @@ void yyerror(const char* fmt, ...);
 
 %%
 
-program: ext_def_list 
-    {ast_display($1, 1); semantic_analysis($1);}
+program: ext_def_list {
+    ast_display($1, 1);
+    semantic_analysis($1);
+    generate_IR($1, input_file, output_file);
+  }
   ; 
 
 ext_def_list: ext_def ext_def_list
@@ -316,6 +322,9 @@ left_value: IDENT {
   | expr OP_DOT IDENT {
       $$ = ast_new_node(1, MEMBER_CALL, yylineno, $1);
       strcpy($$->value.str, $3);
+    }
+  | expr '[' expr ']' {
+      $$ = ast_new_node(2, ARRAY_CALL, yylineno, $1, $3);
     }
   ;
 

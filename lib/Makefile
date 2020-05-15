@@ -5,6 +5,7 @@ LIB_SRC := \
 	ast.c\
 	log.c\
 	semantic.c\
+	llvm.c\
 
 LIB_OBJ := $(patsubst %.c, $(OBJDIR)/%.o, $(LIB_SRC))
 LIB_INC := $(patsubst %.c, $(LIBDIR)/%.h, $(LIB_SRC))

@@ -15,7 +15,7 @@ static int sem_check(ast_node* T);
 static char* new_alias() {
   static int cnt = 0;
   static char alias[MAX_ALIAS_LEN] = {0};
-  sprintf(alias, ".V%d", cnt);
+  sprintf(alias, "G%d", cnt);
   cnt++;
   return alias;
 }
@@ -24,7 +24,7 @@ static char* new_alias() {
 static char* new_tmp() {
   static int cnt = 0;
   static char tmp[MAX_ALIAS_LEN] = {0};
-  sprintf(tmp, ".T%d", cnt);
+  sprintf(tmp, "T%d", cnt);
   cnt++;
   return tmp;
 }
@@ -166,7 +166,9 @@ static int sem_check_var_list(ast_node* T) {
     T->num = 1;
 
     // Is this identifier an array?
-    if (T->dim > 0) SYMBOL(sym).isarray = 1;
+    SYMBOL(sym).dim = T->dim;
+    for (int i = 0; i < T->dim; i++)
+      SYMBOL(sym).capacity[i] = T->capacity[i];
     break;
   
   case VAR_INIT:
@@ -179,7 +181,7 @@ static int sem_check_var_list(ast_node* T) {
 
     // Check the type of initializer.
     if (T->dtype != T->children[1]->dtype || 
-    SYMBOL(T->children[0]->symbol).isarray) {
+    SYMBOL(T->children[0]->symbol).dim) {
       fault(-EWRONGINITTYPE, T->lineno,
         ast_table[T->children[1]->dtype], T->children[0]->value.str);
       err = 1;
@@ -301,26 +303,18 @@ static int sem_check_expr(ast_node* T) {
     break;
 
   case L_INT:
-    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE,
-      T_INT, TEMP, T->offset);
     T->dtype = T_INT;
     T->width = 4;
     break;
   case L_CHAR:
-    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE,
-      T_CHAR, TEMP, T->offset);
     T->dtype = T_CHAR;
     T->width = 1;
     break;
   case L_FLOAT:
-    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE,
-      T_FLOAT, TEMP, T->offset);
     T->dtype = T_FLOAT;
     T->width = 4;
     break;
   case L_STRING:
-    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE,
-      T_STRING, TEMP, T->offset);
     T->dtype = T_STRING;
     T->width = sizeof(char *);
     break;
@@ -335,10 +329,15 @@ static int sem_check_expr(ast_node* T) {
     T->width = T->children[1]->width;
 
     // Type conflict
-    if (T->children[0]->dtype != T->children[1]->dtype) {
+    if (T->children[0]->dtype != T->children[1]->dtype ||
+    T->children[0]->dim) {
       fault(-EDIFFOPETYPE, T->lineno, "assignment");
       err = 1;
     }
+
+    if (T->type == COMP_ASSIGN)
+      T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP,
+        T->offset + (T->children[0] ? T->children[0]->width : 0));
     break;
 
   // Logic expressions.
@@ -357,6 +356,9 @@ static int sem_check_expr(ast_node* T) {
     if (T->width < T->children[1]->width)
       T->width = T->children[1]->width;
     T->dtype = T_INT;
+
+    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP,
+      T->offset + (T->children[0] ? T->children[0]->width : 0));
     break;
 
   // Arithmetic expressions.
@@ -378,8 +380,8 @@ static int sem_check_expr(ast_node* T) {
     } else if (type == T_STRUCT || type_ext == T_STRUCT) {
       fault(-EWRONGOPETYPE, T->lineno, ast_table[T->type], "structs");
       err = 1;
-    } else if (SYMBOL(T->children[0]->symbol).isarray ||
-        SYMBOL(T->children[1]->symbol).isarray) {
+    } else if (SYMBOL(T->children[0]->symbol).dim ||
+        SYMBOL(T->children[1]->symbol).dim) {
       fault(-EWRONGOPETYPE, T->lineno, ast_table[T->type], "arrays");
       err = 1;
     }
@@ -462,7 +464,7 @@ static int sem_check_expr(ast_node* T) {
       break;
     }
 
-    // Struct not defined.
+    // Member not defined.
     sym = stab_search(T->value.str);
     if (sym == -ENOSYMBOL) {
       fault(-ENOSYMBOL, T->lineno, T->value.str);
@@ -482,6 +484,12 @@ static int sem_check_expr(ast_node* T) {
 
     T->dtype = SYMBOL(sym).dtype;
     T->symbol = sym;
+
+    // T->symbol is occupied by the symbol of member
+    // so we need to leverage T->parent_struct to store
+    // the value of member call here.
+    T->parent_struct = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP,
+      T->offset + (T->children[0] ? T->children[0]->width : 0));
     break;
 
   case FUNC_CALL:
@@ -532,12 +540,11 @@ static int sem_check_expr(ast_node* T) {
   case ARRAY_CALL:
     T->children[0]->offset = T->offset;
     err |= sem_check_expr(T->children[0]);
-    T->symbol = T->children[0]->symbol;
     T->children[1]->offset = T->offset + T->children[0]->width;
     err |= sem_check_expr(T->children[1]);
 
     // Identifier is not an array variable.
-    if (!SYMBOL(T->symbol).isarray) {
+    if (!SYMBOL(T->children[0]->symbol).dim) {
       fault(-ENOTARRAY, T->lineno, T->children[0]->value.str);
       err = 1;
     }
@@ -549,6 +556,9 @@ static int sem_check_expr(ast_node* T) {
     }
 
     T->dtype = T->children[0]->dtype;
+    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP,
+      T->offset + T->children[0]->width + T->children[1]->width);
+    SYMBOL(T->symbol).dim = SYMBOL(T->children[0]->symbol).dim - 1;
     break;
   }
 

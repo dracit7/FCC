@@ -5,9 +5,9 @@ struct foo {
   struct {
     char t;
   } s;
-} f;
+};
 
-int geta() {
+int geta(struct foo f) {
   f.a += 3;
   f.s.t = 'c'; 
   return f.a;

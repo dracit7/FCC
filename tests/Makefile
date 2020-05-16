@@ -19,8 +19,8 @@ $(TESTS): all
 		else echo + $(EXECUTABLE)[TEST] $@ failed.; fi;\
 	)
 	@llvm-as tmp/$@.ll -o tmp/$@.bc
-	@clang -Wno-all -emit-llvm -S $(patsubst test-%, $(TESTDIR)/%.c, $@) -o tmp/$@.bc
-	@llc -relocation-model=pic tmp/$@.bc
+	@$(USE_CLANG)clang -Wno-all -emit-llvm -S $(patsubst test-%, $(TESTDIR)/%.c, $@) -o tmp/$@.ll
+	@llc -relocation-model=pic tmp/$@.ll
 	@gcc tmp/$@.s -o tmp/$@
 
 test: $(TESTS)

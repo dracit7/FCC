@@ -10,6 +10,9 @@ static LLVMBuilderRef builder;
 static LLVMBasicBlockRef cur_bblock;
 static LLVMValueRef cur_func;
 
+// Record the number of members in current processing struct.
+static int member_num;
+
 // Get the symbol table from the semantic module.
 extern symbol_table stab;
 
@@ -381,7 +384,7 @@ void gen_all(ast_node* T) {
       gen_all(T->children[0]);
       LLVMStructSetBody(
         T->llvm_type, T->children[0]->llvm_argtypes->arr,
-        T->children[0]->num, 0
+        member_num, 0
       );
     } 
 
@@ -411,7 +414,10 @@ void gen_all(ast_node* T) {
       T->children[2]->llvm_argtypes = T->llvm_argtypes;
       T->children[2]->num = T->num + T->children[1]->num;
       gen_all(T->children[2]);
-    }
+    
+    // If wer're at the end of list, record the number
+    // of members in the global variable.
+    } else member_num = T->num + T->children[1]->num;
 
     // After that, we need to register the index in the
     // parent struct of each member's symbol table entry.
@@ -422,9 +428,6 @@ void gen_all(ast_node* T) {
     T->children[1]->num = T->num;
     gen_var_list(T->children[1]);
 
-    // We should pass the total number of members back.
-    if (T->children[2])
-      T->num = T->children[2]->num;
     break;
   
   case FUNC_DEF:
@@ -435,11 +438,7 @@ void gen_all(ast_node* T) {
       LLVM_TYPE(T->children[0]->type, T->children[0]->symbol);
     gen_all(T->children[1]);
 
-    // Before processing the function body, we start
-    // a new basic block here.
-    cur_func = T->children[1]->llvm_value;
-    cur_bblock = LLVMAppendBasicBlock(cur_func, LLVM_ENTRY_LABEL);
-    LLVMPositionBuilderAtEnd(builder, cur_bblock);
+    // Process the function body.
     gen_all(T->children[2]);
     if (!LLVMGetBasicBlockTerminator(cur_bblock))
       LLVMBuildRetVoid(builder);
@@ -468,8 +467,13 @@ void gen_all(ast_node* T) {
         SYMBOL(T->symbol).name, T->llvm_type);
       T->llvm_value = T->children[0]->llvm_value;
 
+      // Set current function and start a new basic block.
+      cur_func = T->llvm_value;
+      cur_bblock = LLVMAppendBasicBlock(cur_func, LLVM_ENTRY_LABEL);
+      LLVMPositionBuilderAtEnd(builder, cur_bblock);
+
       // The second traverse, record parameters to the
-      // symbol table.
+      // symbol table and store them in the fuunction stack.
       T->children[0]->num = 0;
       gen_all(T->children[0]);
 
@@ -478,6 +482,11 @@ void gen_all(ast_node* T) {
       T->llvm_type = LLVMFunctionType(T->llvm_type, NULL, 0, 0);
       T->llvm_value = LLVMAddFunction(module, 
         SYMBOL(T->symbol).name, T->llvm_type);
+
+      // Set current function and start a new basic block.
+      cur_func = T->llvm_value;
+      cur_bblock = LLVMAppendBasicBlock(cur_func, LLVM_ENTRY_LABEL);
+      LLVMPositionBuilderAtEnd(builder, cur_bblock);
     }
     break;
   
@@ -530,6 +539,10 @@ void gen_all(ast_node* T) {
       SYMBOL(T->children[1]->symbol).llvm_type = 
         LLVM_TYPE(T->children[0]->type, T->children[0]->symbol);
       SYMBOL(T->children[1]->symbol).param_num = T->num;
+      SYMBOL(T->children[1]->symbol).stype = PARAM;
+
+      // Store the parameter on the stack.
+      gen_expr(T->children[1]);
     
     // Elsewise, we're in the first traverse in which
     // we collect the parameter type information for

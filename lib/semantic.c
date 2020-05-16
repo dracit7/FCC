@@ -78,8 +78,7 @@ st_index stab_search(char *name) {
 }
 
 // Add a symbol to the symbol table.
-st_index stab_add(char *name, char *alias, int level, int dtype, char stype, int offset) {
-  int scope = NTH(stab.stack, level);
+st_index stab_add(char *name, char *alias, int scope, int dtype, char stype, int offset) {
   st_index index = ST_INDEX(scope, SCOPE(scope).size);
 
   // Search in the same scope scope for a duplicated

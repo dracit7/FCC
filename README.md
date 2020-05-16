@@ -1,23 +1,27 @@
 
-## HUST PL Labs
+## FCC
 
-本仓库为华中科技大学编译原理实验代码。
+FCC is the compiler for a C-like language **FanC**. This language implements a subset of C's functionalities and supports several special features. It is developed as the course design of the compiler's principles course in HUST.
 
-- `inc`: 存放了一些全局的头文件。
-- `lib`: 存放的所有的库文件。
-- `bin`: 存放编译好的二进制文件。
-- `obj`: 存放中间文件。
-- `tests`: 存放用于测试的输入文件。
+### Dependencies
 
-### Lab 1
+FCC leverages `flex` and `bison` to implement its lexer and parser. Please ensure that they're installed on your system.
 
-Lab 1的功能可以由下面的make指令来进行检查：
+FCC's backend is implemented with the help of [LLVM](https://llvm.org/)'s interfaces in C, so LLVM is also required for compiling this project.
 
-```bash
-make test SHOW_TUPLES=1
-make test SHOW_AST=1
-```
+### Usage
 
-前者展示所有的词法元素二元组，后者展示抽象语法树。
+### Testing
 
-如果要单独测试某个输入文件，请将相应的输入文件放在`tests`文件夹下，并执行`make test-xxx SHOW_XXX=1`，其中`xxx`是输入文件的文件名去掉扩展名之后的结果，如`make test-array SHOW_TUPLES=1`。
+Execute `make test` to run all tests, or `make test-xxx` to run a specific test, where `xxx` is the name of the test case.
+
+All test cases are placed under `tests/`. To add new test cases, put the source file in `tests/` and edit `tests/Makefile`, add the source file to `TESTS_SRC`.
+
+When testing, following command line arguments could be used:
+
+- `SHOW_TUPLES=1`: show lex tuples.
+- `SHOW_AST=1`: show the abstract syntax tree.
+- `SHOW_STAB=1`: show the symbol table in each scope.
+- `SHOW_IR=1`: show the IR code.
+
+Compiled test binaries would be placed in `tmp` and could be straightly executed to verify the correctness of FCC.

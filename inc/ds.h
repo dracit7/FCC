@@ -55,11 +55,6 @@ typedef struct {
   int param_num; // The number of paramaters.
   int param_scope; // The scope id of function's params.
 
-  // The offset of external variables in the static segment;
-  // The offset of local variables in the stack frame;
-  // The size of function's stack frame.
-  int offset;
-
   // Array dimension and capacity.
   int dim;
   int capacity[MAX_ARRAY_DIM];
@@ -158,7 +153,7 @@ typedef struct _node {
     uint64_t itg;
   } value;
 
-  // Dim and capacity of this node, only valid in arrays.
+  // Dim and capacity of this node.
   int dim;
   int capacity[MAX_ARRAY_DIM];
 
@@ -178,10 +173,6 @@ typedef struct _node {
   // Symbol index of the parent structure of
   // this variable.
   st_index parent_struct;
-
-  // Members for generating TAC.
-  int offset; // See 'offset' in symbol_table_entry.
-  int width; // Width of this unit in bytes.
 
   // Member for LLVM.
   LLVMTypeRef llvm_type;

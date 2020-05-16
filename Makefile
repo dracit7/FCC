@@ -13,7 +13,7 @@ CFLAGS := \
 	-I.\
 	`llvm-config --cflags --ldflags --libs`\
 
-EXECUTABLE := main
+EXECUTABLE := fcc
 
 ifdef SHOW_AST
 CFLAGS += -DSHOW_AST
@@ -45,6 +45,12 @@ setup:
 	@mkdir -p bin
 	@mkdir -p obj
 	@mkdir -p tmp
+
+install: all
+	@sudo mv bin/fcc /usr/bin/fcc
+
+uninstall:
+	@sudo rm -f /usr/bin/fcc
 
 clean:
 	rm -rf bin

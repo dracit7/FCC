@@ -17,7 +17,7 @@ ifndef USE_CLANG
 $(TESTS): all
 	@echo + $(EXECUTABLE)[TEST] $@
 	@(\
-		if $(BINDIR)/$(EXECUTABLE) -o tmp/$@.ll -f $(patsubst test-%, $(TESTDIR)/%.c, $@);\
+		if $(BINDIR)/$(EXECUTABLE) -o tmp/$@.ll  $(BINFLAGS) -f $(patsubst test-%, $(TESTDIR)/%.c, $@);\
 		then echo + $(EXECUTABLE)[TEST] $@ passed.;\
 		else echo + $(EXECUTABLE)[TEST] $@ failed.; fi;\
 	)

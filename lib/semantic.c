@@ -32,26 +32,25 @@ static char* new_tmp() {
 // Display the symbol table.
 void stab_display() {
   PRINT_BORDER();
-  printf("| %s | %-13s | %-5s | %s | %-6s | %-9s | %s |\n",
-    "ID", "Name", "Alias", "Scope", "DType", "SType", "Offset"
+  printf("| %s | %-18s | %-5s | %s | %-6s | %-9s |\n",
+    "ID", "Name", "Alias", "Scope", "DType", "SType"
   );
   PRINT_BORDER();
 
   for (int i = 0; i < LEN(stab.stack); i++) {
     for (int j = 0; j < SCOPE(i).size; j++) {
       st_index index = ST_INDEX(i, j);
-      char* dots = (strlen(SYMBOL(index).name) > 10) ?
+      char* dots = (strlen(SYMBOL(index).name) > 15) ?
         "..." : "   ";
 
-      printf("| %-2d | %-10.10s%s | %-5s | %-5d | %-6s | %-9s | %-6d |\n",
+      printf("| %-2d | %-15.15s%s | %-5s | %-5d | %-6s | %-9s |\n",
         j,
         SYMBOL(index).name,
         dots,
         SYMBOL(index).alias,
         NTH(stab.stack, i),
         ast_table[SYMBOL(index).dtype],
-        symbol_name[SYMBOL(index).stype],
-        SYMBOL(index).offset
+        symbol_name[SYMBOL(index).stype]
       );
     }
   }
@@ -78,7 +77,7 @@ st_index stab_search(char *name) {
 }
 
 // Add a symbol to the symbol table.
-st_index stab_add(char *name, char *alias, int scope, int dtype, char stype, int offset) {
+st_index stab_add(char *name, char *alias, int scope, int dtype, char stype) {
   st_index index = ST_INDEX(scope, SCOPE(scope).size);
 
   // Search in the same scope scope for a duplicated
@@ -96,7 +95,6 @@ st_index stab_add(char *name, char *alias, int scope, int dtype, char stype, int
   strcpy(SYMBOL(index).alias, alias);
   SYMBOL(index).dtype = dtype;
   SYMBOL(index).stype = stype;
-  SYMBOL(index).offset = offset;
 
   // Return the index of the inserted symbol.
   SCOPE(scope).size++;
@@ -104,7 +102,7 @@ st_index stab_add(char *name, char *alias, int scope, int dtype, char stype, int
 }
 
 // Add a temporary symbol to the symbol table.
-st_index stab_add_tmp(char *alias, int level, int dtype, char stype, int offset) {
+st_index stab_add_tmp(char *alias, int level, int dtype, char stype) {
   st_index index = ST_INDEX(level, SCOPE(level).size);
 
   // Fill the symbol table entry.
@@ -112,7 +110,6 @@ st_index stab_add_tmp(char *alias, int level, int dtype, char stype, int offset)
   strcpy(SYMBOL(index).alias, alias);
   SYMBOL(index).dtype = dtype;
   SYMBOL(index).stype = stype;
-  SYMBOL(index).offset = offset;
 
   // Return the index of the inserted symbol.
   SCOPE(level).size++;
@@ -134,9 +131,6 @@ static int sem_check_var_list(ast_node* T) {
     T->children[1]->parent_struct = T->parent_struct;
     T->children[0]->symbol = 
     T->children[1]->symbol = T->symbol;
-    T->children[0]->offset = T->offset;
-    T->children[1]->offset = T->offset + T->width;
-    T->children[1]->width = T->width;
     err |= sem_check_var_list(T->children[0]);
     err |= sem_check_var_list(T->children[1]);
 
@@ -147,7 +141,7 @@ static int sem_check_var_list(ast_node* T) {
   // Record the variable in the symbol table.
   case IDENT:
     sym = stab_add(T->value.str, new_alias(), CUR_SCOPE,
-      T->dtype, VAR, T->offset);
+      T->dtype, VAR);
     if (sym == -EDUPSYMBOL) {
       fault(-EDUPSYMBOL, T->lineno, T->value.str);
       err = 1;
@@ -173,9 +167,6 @@ static int sem_check_var_list(ast_node* T) {
   
   case VAR_INIT:
     T->children[0]->dtype = T->dtype;
-    T->children[0]->offset = T->offset;
-    T->children[1]->offset = T->offset + T->width;
-    T->children[1]->width = T->width;
     err |= sem_check_var_list(T->children[0]);
     err |= sem_check_expr(T->children[1]);
 
@@ -217,7 +208,6 @@ static int sem_check_arg(st_index symbol, ast_node* T) {
     }
 
     // Wrong type of argument.
-    T->children[0]->offset = T->offset;
     err |= sem_check_expr(T->children[0]);
     if (SYMBOL_GLOB(param_scope, i).dtype != T->children[0]->dtype) {
       fault(-EWRONGARGTYPE, err_pos, i + 1, func_name,
@@ -247,7 +237,7 @@ static int sem_check_struct(ast_node* T) {
   // variables right away.
   if (T->children[0]) {
     sym = stab_add(T->value.str, new_alias(), CUR_SCOPE,
-      T_STRUCT, STRUCT, T->offset);
+      T_STRUCT, STRUCT);
     if (sym == -EDUPSYMBOL) {
       fault(-EDUPSYMBOL, T->lineno, T->value.str);
       return err;
@@ -255,9 +245,7 @@ static int sem_check_struct(ast_node* T) {
 
     T->symbol = sym;
     T->children[0]->parent_struct = sym;
-    T->children[0]->offset = T->offset;
     err |= sem_check(T->children[0]);
-    T->width = T->children[0]->width;
 
   // Use a pre-defined struct.
   } else {
@@ -297,36 +285,28 @@ static int sem_check_expr(ast_node* T) {
     } else {
       T->symbol = sym;
       T->dtype = SYMBOL(sym).dtype;
-      T->offset = SYMBOL(sym).offset;
-      T->width = 0;
     }
     break;
 
   case L_INT:
     T->dtype = T_INT;
-    T->width = 4;
     break;
   case L_CHAR:
     T->dtype = T_CHAR;
-    T->width = 1;
     break;
   case L_FLOAT:
     T->dtype = T_FLOAT;
-    T->width = 4;
     break;
   case L_STRING:
     T->dtype = T_STRING;
-    T->width = sizeof(char *);
     break;
 
   // Assigning.
   case ASSIGN:
   case COMP_ASSIGN:
     err |= sem_check_expr(T->children[0]);
-    T->children[1]->offset = T->offset;
     err |= sem_check_expr(T->children[1]);
     T->dtype = T->children[0]->dtype;
-    T->width = T->children[1]->width;
 
     // Type conflict
     if (T->children[0]->dtype != T->children[1]->dtype ||
@@ -336,8 +316,7 @@ static int sem_check_expr(ast_node* T) {
     }
 
     if (T->type == COMP_ASSIGN)
-      T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP,
-        T->offset + (T->children[0] ? T->children[0]->width : 0));
+      T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP);
     break;
 
   // Logic expressions.
@@ -349,16 +328,11 @@ static int sem_check_expr(ast_node* T) {
   case OP_LE:
   case OP_EQ:
   case OP_NEQ:
-    T->children[0]->offset = T->children[1]->offset = T->offset;
     err |= sem_check_expr(T->children[0]);
-    T->width = T->children[0]->width;
     err |= sem_check_expr(T->children[1]);
-    if (T->width < T->children[1]->width)
-      T->width = T->children[1]->width;
     T->dtype = T_INT;
 
-    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP,
-      T->offset + (T->children[0] ? T->children[0]->width : 0));
+    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP);
     break;
 
   // Arithmetic expressions.
@@ -366,9 +340,7 @@ static int sem_check_expr(ast_node* T) {
   case OP_SUB:
   case OP_STAR:
   case OP_DIV:
-    T->children[0]->offset = T->offset;
     err |= sem_check_expr(T->children[0]);
-    T->children[1]->offset = T->offset + T->children[0]->width;
     err |= sem_check_expr(T->children[1]);
     type = T->children[0]->dtype;
     type_ext = T->children[1]->dtype;
@@ -389,20 +361,15 @@ static int sem_check_expr(ast_node* T) {
     // We support a little bit of implicit type conversion here.
     if (type == T_FLOAT || type_ext == T_FLOAT) {
       T->dtype = T_FLOAT;
-      T->width = T->children[0]->width + T->children[1]->width + 4;
     } else {
       T->dtype = T_INT;
-      T->width = T->children[0]->width + T->children[1]->width + 2;
     }
 
-    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP,
-      T->offset + T->children[0]->width + T->children[1]->width);
+    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP);
     break;
 
   case OP_MOD:
-    T->children[0]->offset = T->offset;
     err |= sem_check_expr(T->children[0]);
-    T->children[1]->offset = T->offset + T->children[0]->width;
     err |= sem_check_expr(T->children[1]);
 
     // Operands must have the same data type.
@@ -418,10 +385,8 @@ static int sem_check_expr(ast_node* T) {
       err = 1;
     }
 
-    T->width = T->children[0]->width + T->children[1]->width + 2;
     T->dtype = T_INT;
-    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP,
-      T->offset + T->children[0]->width + T->children[1]->width);
+    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP);
     break;
 
   // Single-operand expressions.
@@ -429,7 +394,6 @@ static int sem_check_expr(ast_node* T) {
   case OP_INC:
   case OP_NOT:
   case UMINUS:
-    T->children[0]->offset = T->offset;
     err |= sem_check_expr(T->children[0]);
 
     // Some data types does not support such operations.
@@ -446,14 +410,11 @@ static int sem_check_expr(ast_node* T) {
       err = 1;
     }
 
-    T->width = T->children[0]->width;
-    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP,
-      T->offset + T->children[0]->width);
+    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP);
     break;
 
   // Dot operator has strict requirements.
   case MEMBER_CALL:
-    T->children[0]->offset = T->offset;
     err |= sem_check_expr(T->children[0]);
 
     // Left operand is not a struct.
@@ -488,8 +449,7 @@ static int sem_check_expr(ast_node* T) {
     // T->symbol is occupied by the symbol of member
     // so we need to leverage T->parent_struct to store
     // the value of member call here.
-    T->parent_struct = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP,
-      T->offset + (T->children[0] ? T->children[0]->width : 0));
+    T->parent_struct = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP);
     break;
 
   case FUNC_CALL:
@@ -514,37 +474,25 @@ static int sem_check_expr(ast_node* T) {
     }
     T->dtype = SYMBOL(sym).dtype;
 
-    // Define the width of return value.
-    T->width = WIDTH(T->dtype);
-
     // Evaluate all arguments.
     if (T->children[0]) {
-      T->children[0]->offset = T->offset;
       err |= sem_check_expr(T->children[0]);
-      T->width += T->children[0]->width;
     }
     err |= sem_check_arg(sym, T);
 
-    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP,
-      T->offset + (T->children[0] ? T->children[0]->width : 0));
+    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP);
     break;
 
   case ARG_LIST:
-    T->children[0]->offset = T->offset;
     err |= sem_check_expr(T->children[0]);
-    T->width = T->children[0]->width;
 
     if (T->children[1]) {
-      T->children[1]->offset = T->offset + T->children[0]->width;
       err |= sem_check_expr(T->children[1]);
-      T->width += T->children[1]->width;
     }
     break;
   
   case ARRAY_CALL:
-    T->children[0]->offset = T->offset;
     err |= sem_check_expr(T->children[0]);
-    T->children[1]->offset = T->offset + T->children[0]->width;
     err |= sem_check_expr(T->children[1]);
 
     // Identifier is not an array variable.
@@ -560,8 +508,7 @@ static int sem_check_expr(ast_node* T) {
     }
 
     T->dtype = T->children[0]->dtype;
-    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP,
-      T->offset + T->children[0]->width + T->children[1]->width);
+    T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP);
 
     SYMBOL(T->symbol).dim = SYMBOL(T->children[0]->symbol).dim - 1;
     for (int i = 0; i < SYMBOL(T->symbol).dim; i++)
@@ -580,10 +527,8 @@ static int sem_check(ast_node* T) {
   if (T) switch (T->type) {
   case EXT_DEF_LIST:
     if (T->children[0]) {
-      T->children[0]->offset = T->offset;
       err |= sem_check(T->children[0]);
       if (T->children[1]) {
-        T->children[1]->offset = T->offset + T->children[0]->width;
         err |= sem_check(T->children[1]);
       }
     }
@@ -597,15 +542,12 @@ static int sem_check(ast_node* T) {
     }
     
     T->dtype = T->children[1]->dtype = T->children[0]->type;
-    T->children[1]->offset = T->offset;
-    T->children[1]->width = WIDTH(T->dtype);
     err |= sem_check_var_list(T->children[1]);
-    T->width = WIDTH(T->dtype) * T->children[1]->num;
     break;
   
   case STRUCT_DEF:
     sym = stab_add(T->value.str, new_alias(), CUR_SCOPE,
-      T_STRUCT, STRUCT, BASE_OFFSET);
+      T_STRUCT, STRUCT);
     if (sym == -EDUPSYMBOL) {
       fault(-EDUPSYMBOL, T->lineno, T->value.str);
       err = 1;
@@ -613,12 +555,9 @@ static int sem_check(ast_node* T) {
     }
 
     T->symbol = sym;
-    T->offset = BASE_OFFSET;
     if (T->children[0]) {
       T->children[0]->parent_struct = sym;
-      T->children[0]->offset = T->offset;
       err |= sem_check(T->children[0]);
-      T->width = T->children[0]->width;
     } 
     break;
 
@@ -629,31 +568,20 @@ static int sem_check(ast_node* T) {
     }
 
     T->dtype = T->children[1]->dtype = T->children[0]->type;
-    T->children[1]->offset = T->offset;
-    T->children[1]->width = WIDTH(T->dtype);
     T->children[1]->parent_struct = T->parent_struct;
     err |= sem_check_var_list(T->children[1]);
-    T->width = WIDTH(T->dtype) * T->children[1]->num;
     if (T->children[2]) {
       T->children[2]->parent_struct = T->parent_struct;
-      T->children[2]->offset = T->offset + T->children[0]->width;
       err |= sem_check(T->children[2]);
     }
     break;
   
   case FUNC_DEF:
-    T->width = 0;
-    T->offset = BASE_OFFSET;
-
     T->children[1]->dtype = T->children[0]->type;
     err |= sem_check(T->children[1]);
-    T->offset += T->children[1]->width;
 
-    T->children[2]->offset += T->offset;
     T->children[2]->symbol = T->children[1]->symbol;
     err |= sem_check(T->children[2]);
-    SYMBOL(T->children[1]->symbol).offset =
-      T->offset + T->children[2]->width;
     SCOPE_POP();
     
     // Is this function returned?
@@ -667,7 +595,7 @@ static int sem_check(ast_node* T) {
 
   case FUNC_DECL:
     sym = stab_add(T->value.str, new_alias(), CUR_SCOPE,
-      T->dtype, FUNC, 0);
+      T->dtype, FUNC);
     if (sym == -EDUPSYMBOL) {
       fault(-EDUPSYMBOL, T->lineno, T->value.str);
       err = 1;
@@ -675,28 +603,21 @@ static int sem_check(ast_node* T) {
     }
 
     T->symbol = sym;
-    T->offset = BASE_OFFSET;
     SCOPE_PUSH();
     SYMBOL(sym).param_scope = NTH(stab.stack, CUR_SCOPE);
     if (T->children[0]) {
-      T->children[0]->offset = T->offset;
       err |= sem_check(T->children[0]);
-      T->width = T->children[0]->width;
       SYMBOL(sym).param_num = T->children[0]->num;
     }
     break;
   
   case PARAM_LIST:
-    T->children[0]->offset = T->offset;
     err |= sem_check(T->children[0]);
     if (T->children[1]) {
-      T->children[1]->offset = T->offset + T->children[0]->width;
       err |= sem_check(T->children[1]);
       T->num = T->children[0]->num + T->children[1]->num;
-      T->width = T->children[0]->width + T->children[1]->width;
     } else {
       T->num = T->children[0]->num;
-      T->width = T->children[0]->width;
     }
     break;
   
@@ -706,7 +627,7 @@ static int sem_check(ast_node* T) {
     }
     
     sym = stab_add(T->children[1]->value.str, new_alias(),
-      1, T->children[0]->type, PARAM, T->offset);
+      1, T->children[0]->type, PARAM);
     if (sym == -EDUPSYMBOL) {
       fault(-EDUPSYMBOL, T->lineno, T->value.str);
       err = 1;
@@ -719,12 +640,10 @@ static int sem_check(ast_node* T) {
     
     T->children[1]->symbol = sym;
     T->num = 1;
-    T->width = WIDTH(T->children[0]->type);
     break;
 
   case CODE_BLOCK:
     SCOPE_PUSH();
-    T->width = 0;
     if (T->children[0]) {
       T->children[0]->symbol = T->symbol;
       T->children[0]->looping = T->looping;
@@ -737,86 +656,56 @@ static int sem_check(ast_node* T) {
   case STMT_LIST:
     if (T->children[0]) {
       T->children[0]->symbol = T->symbol;
-      T->children[0]->offset = T->offset;
       T->children[0]->looping = T->looping;
       err |= sem_check(T->children[0]);
-      T->width = T->children[0]->width;
     }
     if (T->children[1]) {
       T->children[1]->symbol = T->symbol;
-      T->children[1]->offset = T->offset + T->children[0]->width;
       T->children[1]->looping = T->looping;
       err |= sem_check(T->children[1]);
-      T->width += T->children[1]->width;
     }
     break;
   
   case IF_THEN:
-    T->children[0]->offset = T->children[1]->offset = T->offset;
     err |= sem_check_expr(T->children[0]);
-    T->width = T->children[0]->width;
     T->children[1]->symbol = T->symbol;
     T->children[1]->looping = T->looping;
     err |= sem_check(T->children[1]);
-    if (T->width < T->children[1]->width)
-      T->width = T->children[1]->width;
     break;
  
   case IF_THEN_ELSE:
-    T->children[0]->offset = T->children[1]->offset = 
-      T->children[2]->offset = T->offset;
     err |= sem_check_expr(T->children[0]);
-    T->width = T->children[0]->width;
     T->children[1]->symbol = T->symbol;
     T->children[1]->looping = T->looping;
     err |= sem_check(T->children[1]);
-    if (T->width < T->children[1]->width)
-      T->width = T->children[1]->width;
     T->children[2]->symbol = T->symbol;
     T->children[2]->looping = T->looping;
     err |= sem_check(T->children[2]);
-    if (T->width < T->children[2]->width)
-      T->width = T->children[2]->width;
     break;
 
   case WHILE:
-    T->children[0]->offset = T->children[1]->offset = T->offset;
     err |= sem_check_expr(T->children[0]);
-    T->width = T->children[0]->width;
     T->children[1]->symbol = T->symbol;
     T->children[1]->looping = 1;
     err |= sem_check(T->children[1]);
-    if (T->width < T->children[1]->width)
-      T->width = T->children[1]->width;
     break;
     
   case FOR:
     SCOPE_PUSH();
-    T->children[0]->offset = T->children[1]->offset = 
-    T->children[2]->offset = T->children[3]->offset = T->offset;
     T->children[0]->symbol = T->symbol;
     T->children[0]->looping = T->looping;
     err |= sem_check(T->children[0]);
-    T->width = T->children[0]->width;
     err |= sem_check_expr(T->children[1]);
-    if (T->width < T->children[1]->width)
-      T->width = T->children[1]->width;
     err |= sem_check_expr(T->children[2]);
-    if (T->width < T->children[2]->width)
-      T->width = T->children[2]->width;
     T->children[3]->symbol = T->symbol;
     T->children[3]->looping = 1;
     err |= sem_check(T->children[3]);
-    if (T->width < T->children[3]->width)
-      T->width = T->children[3]->width;
     SCOPE_POP();
     break;
     
   case RETURN:
     if (T->children[0]) {
-      T->children[0]->offset = T->offset;
       err |= sem_check_expr(T->children[0]);
-      T->width=T->children[0]->width;
 
       // Check return type
       if (T->children[0]->dtype != SYMBOL(T->symbol).dtype) {
@@ -890,15 +779,14 @@ void semantic_analysis(ast_node* T) {
   // because its st_index is 0, which represents
   // no symbol.
   SCOPE_PUSH();
-  stab_add("-", "-", CUR_SCOPE, T_INT, VAR, 0);
+  stab_add("-", "-", CUR_SCOPE, T_INT, VAR);
 
   // Initialize the pre-defined symbols.
   st_index index = stab_add(
-    "printf", "P1", CUR_SCOPE, T_INT, FUNC, 4);
+    "printf", "P1", CUR_SCOPE, T_INT, FUNC);
   SYMBOL(index).param_num = 1;
 
   // Do the semantic analysis
-  T->offset = 0;
   if (sem_check(T)) {
     exit(1);
   }

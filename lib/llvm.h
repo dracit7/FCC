@@ -48,6 +48,10 @@
     NULL\
 ))))))
 
+#define LLVM_CONDITION(value) LLVMBuildICmp(builder,\
+  LLVMIntNE, value, \
+  LLVMConstInt(LLVMTypeOf(value), 0, 0), new_load())
+
 void generate_IR(ast_node* T, char* input, char* output);
 
 #endif

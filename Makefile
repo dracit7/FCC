@@ -27,8 +27,8 @@ ifdef SHOW_STAB
 CFLAGS += -DSHOW_STAB
 endif
 
-ifndef SHOW_IR
-BINFLAGS += -o tmp/$@.bc
+ifdef SHOW_IR
+CFLAGS += -DSHOW_IR
 endif
 
 .PHONY: all lexer parser

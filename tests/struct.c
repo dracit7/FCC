@@ -12,3 +12,7 @@ int geta() {
   f.s.t = 'c'; 
   return f.a;
 }
+
+int main() {
+  return 0;
+}

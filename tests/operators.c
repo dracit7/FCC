@@ -1,5 +1,6 @@
 
-int main(int foo) {
+int main() {
+  int foo = 1;
   (1+3)*(foo/6)-1;
   -foo;
   foo *= 1;

@@ -4,7 +4,7 @@ struct {
 } foo;
 
 char c;
-float d;
+int d;
 
 void test(int x, int y) {}
 

@@ -41,10 +41,6 @@ int main(int argc, char* const argv[]) {
   if (input_file && (yyin = fopen(input_file, "r")) == NULL)
     fault(-EOPEN, 0, input_file);
 
-  // Specify output file.
-  if (output_file && (freopen(output_file, "w", stdout)) == NULL) 
-    fault(-EOPEN, 0, output_file);
-  
   // Print all tokens and exit.
   if (show_tuples) {
     int token;

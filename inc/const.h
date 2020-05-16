@@ -4,7 +4,7 @@
 
 #define NONE 0
 
-// Globak
+// Global
 #define PROJECT_NAME "minic"
 #define LIST_INIT_SIZE 8
 
@@ -21,6 +21,10 @@
 #define MAX_CHILD_NUM 4
 #define MAX_ARRAY_DIM 16
 #define INDENT_SIZE 2
+
+// LLVM
+#define LLVM_ENTRY_LABEL "entry"
+#define MAX_INDICE_NUM 16
 
 /*
  * Error handling

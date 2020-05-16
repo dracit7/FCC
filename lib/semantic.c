@@ -48,7 +48,7 @@ void stab_display() {
         SYMBOL(index).name,
         dots,
         SYMBOL(index).alias,
-        i,
+        NTH(stab.stack, i),
         ast_table[SYMBOL(index).dtype],
         symbol_name[SYMBOL(index).stype],
         SYMBOL(index).offset
@@ -79,15 +79,16 @@ st_index stab_search(char *name) {
 
 // Add a symbol to the symbol table.
 st_index stab_add(char *name, char *alias, int level, int dtype, char stype, int offset) {
-  st_index index = ST_INDEX(level, SCOPE(level).size);
+  int scope = NTH(stab.stack, level);
+  st_index index = ST_INDEX(scope, SCOPE(scope).size);
 
-  // Search in the same scope level for a duplicated
+  // Search in the same scope scope for a duplicated
   // symbol.
-  for (int i = 0; i < SCOPE(level).size; i++) {
+  for (int i = 0; i < SCOPE(scope).size; i++) {
 
     // If there exists an symbol with the same name as
     // the symbol to be added, return an error.
-    if (!strcmp(SYMBOL(ST_INDEX(level, i)).name, name))
+    if (!strcmp(SYMBOL(ST_INDEX(scope, i)).name, name))
       return -EDUPSYMBOL;
   }
 
@@ -99,8 +100,8 @@ st_index stab_add(char *name, char *alias, int level, int dtype, char stype, int
   SYMBOL(index).offset = offset;
 
   // Return the index of the inserted symbol.
-  SCOPE(level).size++;
-  return ST_INDEX(level, SCOPE(level).size-1);
+  SCOPE(scope).size++;
+  return index;
 }
 
 // Add a temporary symbol to the symbol table.
@@ -558,7 +559,11 @@ static int sem_check_expr(ast_node* T) {
     T->dtype = T->children[0]->dtype;
     T->symbol = stab_add_tmp(new_tmp(), CUR_SCOPE, T->dtype, TEMP,
       T->offset + T->children[0]->width + T->children[1]->width);
+
     SYMBOL(T->symbol).dim = SYMBOL(T->children[0]->symbol).dim - 1;
+    for (int i = 0; i < SYMBOL(T->symbol).dim; i++)
+      SYMBOL(T->symbol).capacity[i] = 
+      SYMBOL(T->children[0]->symbol).capacity[i];
     break;
   }
 

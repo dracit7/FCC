@@ -10,9 +10,6 @@ static LLVMBuilderRef builder;
 static LLVMBasicBlockRef cur_bblock;
 static LLVMValueRef cur_func;
 
-// Maintain basic block references for control flow.
-static LLVMBasicBlockRef bbefore, btrue, bfalse, bafter;
-
 // Get the symbol table from the semantic module.
 extern symbol_table stab;
 
@@ -68,7 +65,7 @@ static void gen_var_list(ast_node* T) {
 
     // If the variable is an array, we need to build
     // an array type here.
-    for (int i = 0; i < T->dim; i++)
+    for (int i = T->dim-1; i >= 0; i--)
       type = LLVMArrayType(type, T->capacity[i]);
     SYMBOL(T->symbol).llvm_type = type;
 
@@ -140,6 +137,7 @@ static void gen_struct(ast_node* T) {
 }
 
 static void gen_expr(ast_node* T) {
+  LLVMValueRef indices[MAX_INDICE_NUM] = {0};
 
   if (T) switch (T->type) {
 
@@ -162,8 +160,19 @@ static void gen_expr(ast_node* T) {
       if (SYMBOL(T->symbol).stype == PARAM) {
         T->llvm_value = LLVMGetParam(
           SYMBOL(T->symbol).llvm_value,
-          SYMBOL(T->symbol).param_num
+          SYMBOL(T->symbol).param_num);
+        
+        // For convinience, we put the parameter on
+        // stack and regard it as a variable from now on.
+        SYMBOL(T->symbol).llvm_value = LLVMBuildAlloca(
+          builder, SYMBOL(T->symbol).llvm_type,
+          SYMBOL(T->symbol).alias
         );
+        LLVMBuildStore(builder, T->llvm_value, 
+          SYMBOL(T->symbol).llvm_value);
+        SYMBOL(T->symbol).stype = VAR;
+
+      // Not parameter, just load the variable from stack.
       } else T->llvm_value = LLVMBuildLoad(builder,
           SYMBOL(T->symbol).llvm_value, new_load());
     }
@@ -253,7 +262,7 @@ static void gen_expr(ast_node* T) {
     // Store the results of increment or decrement.
     if (T->type == OP_INC || T->type == OP_DEC)
       LLVMBuildStore(builder, T->llvm_value,
-        T->children[0]->llvm_value);
+        SYMBOL(T->children[0]->symbol).llvm_value);
     break;
 
   case MEMBER_CALL:
@@ -282,12 +291,14 @@ static void gen_expr(ast_node* T) {
 
   // Function calls.
   case FUNC_CALL:
-    if (T->children[0])
+    if (T->children[0]) {
+      T->children[0]->llvm_args = LIST_NEW(value_list, LLVMValueRef);
       gen_expr(T->children[0]);
+    }
 
     T->llvm_value = LLVMBuildCall(
       builder, LLVMGetNamedFunction(module,
-      SYMBOL(stab_search(T->value.str)).alias),
+      SYMBOL(stab_search(T->value.str)).name),
       T->children[0]->llvm_args->arr,
       T->children[0]->num,
       SYMBOL(T->symbol).alias
@@ -302,40 +313,40 @@ static void gen_expr(ast_node* T) {
     if (T->children[1]) {
       T->children[1]->llvm_args = T->llvm_args;
       gen_expr(T->children[1]);
-    }
+      T->num = T->children[1]->num + 1;
+    } else T->num = 1;
     break;
   
   case ARRAY_CALL:
+    gen_expr(T->children[0]);
+    gen_expr(T->children[1]);
+
+    // Get the address of the indexed element.
+    indices[0] = LLVMConstInt(LLVMInt64Type(), 0, 0);
+    indices[1] = T->children[1]->llvm_value;
+    SYMBOL(T->symbol).llvm_value = LLVMBuildGEP(builder, 
+      SYMBOL(T->children[0]->symbol).llvm_value,
+      indices, 2, new_load());
 
     // If T->llvm_value is not null, this is an
     // assignment and we need to update the value
     // of corresponding element in array.
     if (T->llvm_value) {
-      gen_expr(T->children[0]);
-      gen_expr(T->children[1]);
-
-      T->llvm_value = LLVMBuildInsertElement(builder,
-        T->children[0]->llvm_value,
-        T->llvm_value,
-        T->children[1]->llvm_value,
-        SYMBOL(T->children[0]->symbol).alias);
+      LLVMBuildStore(builder,
+        T->llvm_value, SYMBOL(T->symbol).llvm_value);
 
     // Elsewise we're trying to get the value of
     // this element.
     } else {
-      gen_expr(T->children[0]);
-      gen_expr(T->children[1]);
-
-      T->llvm_value = LLVMBuildExtractElement(builder, 
-        T->children[0]->llvm_value,
-        T->children[1]->llvm_value,
-        SYMBOL(T->children[0]->symbol).alias);
+      T->llvm_value = LLVMBuildLoad(builder, 
+        SYMBOL(T->symbol).llvm_value, new_load());
     }
     break;
   }
 }
 
 void gen_all(ast_node* T) {
+  LLVMBasicBlockRef bbefore, btrue, bfalse, bafter;
 
   if (T) switch (T->type) {
   case EXT_DEF_LIST:
@@ -427,9 +438,11 @@ void gen_all(ast_node* T) {
     // Before processing the function body, we start
     // a new basic block here.
     cur_func = T->children[1]->llvm_value;
-    cur_bblock = LLVMAppendBasicBlock(cur_func, new_bblock());
+    cur_bblock = LLVMAppendBasicBlock(cur_func, LLVM_ENTRY_LABEL);
     LLVMPositionBuilderAtEnd(builder, cur_bblock);
     gen_all(T->children[2]);
+    if (!LLVMGetBasicBlockTerminator(cur_bblock))
+      LLVMBuildRetVoid(builder);
     break;
 
   case FUNC_DECL:
@@ -452,7 +465,7 @@ void gen_all(ast_node* T) {
       
       // Add the function to the module.
       T->children[0]->llvm_value = LLVMAddFunction(module, 
-        SYMBOL(T->symbol).alias, T->llvm_type);
+        SYMBOL(T->symbol).name, T->llvm_type);
       T->llvm_value = T->children[0]->llvm_value;
 
       // The second traverse, record parameters to the
@@ -464,7 +477,7 @@ void gen_all(ast_node* T) {
     } else {
       T->llvm_type = LLVMFunctionType(T->llvm_type, NULL, 0, 0);
       T->llvm_value = LLVMAddFunction(module, 
-        SYMBOL(T->symbol).alias, T->llvm_type);
+        SYMBOL(T->symbol).name, T->llvm_type);
     }
     break;
   
@@ -514,6 +527,8 @@ void gen_all(ast_node* T) {
     // of function in the symbol table.
     if (T->llvm_value) {
       SYMBOL(T->children[1]->symbol).llvm_value = T->llvm_value;
+      SYMBOL(T->children[1]->symbol).llvm_type = 
+        LLVM_TYPE(T->children[0]->type, T->children[0]->symbol);
       SYMBOL(T->children[1]->symbol).param_num = T->num;
     
     // Elsewise, we're in the first traverse in which
@@ -531,15 +546,22 @@ void gen_all(ast_node* T) {
 
   // Nothing special to do with code blocks or statement list.
   case CODE_BLOCK:
-    if (T->children[0])
+    if (T->children[0]) {
+      T->children[0]->llvm_before = T->llvm_before;
+      T->children[0]->llvm_after = T->llvm_after;
       gen_all(T->children[0]);
+    }
     break;
   
   case STMT_LIST:
     if (T->children[0]) {
+      T->children[0]->llvm_before = T->llvm_before;
+      T->children[0]->llvm_after = T->llvm_after;
       gen_all(T->children[0]);
     }
     if (T->children[1]) {
+      T->children[1]->llvm_before = T->llvm_before;
+      T->children[1]->llvm_after = T->llvm_after;
       gen_all(T->children[1]);
     }
     break;
@@ -555,20 +577,26 @@ void gen_all(ast_node* T) {
 
     // Then clause, a new basic block.
     cur_bblock = LLVMAppendBasicBlock(cur_func, new_bblock());
-    LLVMPositionBuilderAtEnd(builder, cur_bblock);
-    gen_all(T->children[1]);
     btrue = cur_bblock;
+    LLVMPositionBuilderAtEnd(builder, cur_bblock);
+    T->children[1]->llvm_before = T->llvm_before;
+    T->children[1]->llvm_after = T->llvm_after;
+    gen_all(T->children[1]);
 
     // After clause, a new basic block.
     cur_bblock = LLVMAppendBasicBlock(cur_func, new_bblock());
-    LLVMPositionBuilderAtEnd(builder, cur_bblock);
     bafter = cur_bblock;
+    LLVMPositionBuilderAtEnd(builder, cur_bblock);
 
     // Build the branch instruction.
     // Remember to switch the position of builder.
     LLVMPositionBuilderAtEnd(builder, bbefore);
-    LLVMBuildCondBr(builder, T->children[0]->llvm_value,
-      btrue, bafter);
+    LLVMBuildCondBr(builder, 
+      LLVM_CONDITION(T->children[0]->llvm_value), btrue, bafter);
+    if (!LLVMGetBasicBlockTerminator(btrue)) {
+      LLVMPositionBuilderAtEnd(builder, btrue);
+      LLVMBuildBr(builder, bafter);
+    }
     LLVMPositionBuilderAtEnd(builder, bafter);
 
     break;
@@ -581,31 +609,41 @@ void gen_all(ast_node* T) {
 
     // Then clause, a new basic block.
     cur_bblock = LLVMAppendBasicBlock(cur_func, new_bblock());
-    LLVMPositionBuilderAtEnd(builder, cur_bblock);
-    gen_all(T->children[1]);
     btrue = cur_bblock;
+    LLVMPositionBuilderAtEnd(builder, cur_bblock);
+    T->children[1]->llvm_before = T->llvm_before;
+    T->children[1]->llvm_after = T->llvm_after;
+    gen_all(T->children[1]);
 
     // Else clause, a new basic block.
     cur_bblock = LLVMAppendBasicBlock(cur_func, new_bblock());
-    LLVMPositionBuilderAtEnd(builder, cur_bblock);
-    gen_all(T->children[2]);
     bfalse = cur_bblock;
+    LLVMPositionBuilderAtEnd(builder, cur_bblock);
+    T->children[2]->llvm_before = T->llvm_before;
+    T->children[2]->llvm_after = T->llvm_after;
+    gen_all(T->children[2]);
 
     // After clause, a new basic block.
     cur_bblock = LLVMAppendBasicBlock(cur_func, new_bblock());
-    LLVMPositionBuilderAtEnd(builder, cur_bblock);
     bafter = cur_bblock;
+    LLVMPositionBuilderAtEnd(builder, cur_bblock);
 
     // Build the condition branch instruction.
     // Remember to switch the position of builder.
     LLVMPositionBuilderAtEnd(builder, bbefore);
-    LLVMBuildCondBr(builder, T->children[0]->llvm_value,
-      btrue, bfalse);
+    LLVMBuildCondBr(builder, 
+      LLVM_CONDITION(T->children[0]->llvm_value), btrue, bfalse);
 
     // Build the branch instruction at the end of
-    // Then-clause.
-    LLVMPositionBuilderAtEnd(builder, btrue);
-    LLVMBuildBr(builder, bafter);
+    // Then-clause and Else-clause.
+    if (!LLVMGetBasicBlockTerminator(btrue)) {
+      LLVMPositionBuilderAtEnd(builder, btrue);
+      LLVMBuildBr(builder, bafter);
+    }
+    if (!LLVMGetBasicBlockTerminator(bfalse)) {
+      LLVMPositionBuilderAtEnd(builder, bfalse);
+      LLVMBuildBr(builder, bafter);
+    }
     LLVMPositionBuilderAtEnd(builder, bafter);
 
     break;
@@ -615,8 +653,10 @@ void gen_all(ast_node* T) {
     // Evaluate the While-clause and create a new
     // basic block here.
     cur_bblock = LLVMAppendBasicBlock(cur_func, new_bblock());
-    gen_expr(T->children[0]);
     bbefore = cur_bblock;
+    LLVMBuildBr(builder, cur_bblock);
+    LLVMPositionBuilderAtEnd(builder, cur_bblock);
+    gen_expr(T->children[0]);
 
     // Pre-allocate the basic block for break and continue.
     cur_bblock = LLVMAppendBasicBlock(cur_func, new_bblock());
@@ -626,13 +666,16 @@ void gen_all(ast_node* T) {
 
     // Build the Loop body.
     LLVMPositionBuilderAtEnd(builder, btrue);
+    cur_bblock = btrue;
+    T->children[1]->llvm_before = bbefore;
+    T->children[1]->llvm_after = bafter;
     gen_all(T->children[1]);
 
     // Build the branch instruction at the end of
     // While-clause.
     LLVMPositionBuilderAtEnd(builder, bbefore);
-    LLVMBuildCondBr(builder, T->children[0]->llvm_value,
-      btrue, bafter);
+    LLVMBuildCondBr(builder, 
+      LLVM_CONDITION(T->children[0]->llvm_value), btrue, bafter);
 
     // Build the branch instruction at the end of loop.
     LLVMPositionBuilderAtEnd(builder, btrue);
@@ -648,8 +691,10 @@ void gen_all(ast_node* T) {
     
     // Condition clause, like while-clause in while loop.
     cur_bblock = LLVMAppendBasicBlock(cur_func, new_bblock());
-    gen_expr(T->children[1]);
     bbefore = cur_bblock;
+    LLVMBuildBr(builder, cur_bblock);
+    LLVMPositionBuilderAtEnd(builder, cur_bblock);
+    gen_expr(T->children[1]);
 
     // Pre-allocate the basic block for break and continue.
     cur_bblock = LLVMAppendBasicBlock(cur_func, new_bblock());
@@ -659,15 +704,18 @@ void gen_all(ast_node* T) {
 
     // The iterater should be generated after
     // the loop body.
-    LLVMPositionBuilderAtEnd(builder, cur_bblock);
+    LLVMPositionBuilderAtEnd(builder, btrue);
+    cur_bblock = btrue;
+    T->children[3]->llvm_before = bbefore;
+    T->children[3]->llvm_after = bafter;
     gen_all(T->children[3]);
     gen_expr(T->children[2]);
 
     // Build the branch instruction at the end of
     // condition clause.
     LLVMPositionBuilderAtEnd(builder, bbefore);
-    LLVMBuildCondBr(builder, T->children[1]->llvm_value,
-      btrue, bafter);
+    LLVMBuildCondBr(builder,
+      LLVM_CONDITION(T->children[1]->llvm_value), btrue, bafter);
 
     // Build the branch instruction at the end of loop.
     LLVMPositionBuilderAtEnd(builder, btrue);
@@ -686,9 +734,9 @@ void gen_all(ast_node* T) {
   // Use the nearest bafter and bbefore to implement
   // break and continue.
   case BREAK:
-    LLVMBuildBr(builder, bafter);
+    LLVMBuildBr(builder, T->llvm_after);
   case CONTINUE:
-    LLVMBuildBr(builder, bbefore);
+    LLVMBuildBr(builder, T->llvm_before);
   
   case IDENT:
   case L_INT:
@@ -727,8 +775,10 @@ void generate_IR(ast_node* T, char* input, char* output) {
   builder = LLVMCreateBuilder();
 
   gen_all(T);
-
   if (output) LLVMPrintModuleToFile(module, output, NULL);
-  else LLVMDumpModule(module);
+
+#ifdef SHOW_IR
+  LLVMDumpModule(module);
+#endif
   LLVMDisposeModule(module);
 }

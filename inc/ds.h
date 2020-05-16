@@ -185,6 +185,8 @@ typedef struct _node {
   // Member for LLVM.
   LLVMTypeRef llvm_type;
   LLVMValueRef llvm_value;
+  LLVMBasicBlockRef llvm_before;
+  LLVMBasicBlockRef llvm_after;
   type_list* llvm_argtypes;
   value_list* llvm_args;
 

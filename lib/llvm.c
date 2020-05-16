@@ -195,8 +195,15 @@ static void gen_expr(ast_node* T) {
       LLVMFloatType(), T->value.flt);
     break;
   case L_STRING:
-    T->llvm_value = LLVMConstString(
-      T->value.str, strlen(T->value.str), 0);
+
+    // We put all strings in the static segment and
+    // use GEP to get its address when reading it.
+    T->llvm_value = LLVMBuildGlobalString(builder,
+      T->value.str, new_load());
+    indices[0] = LLVMConstInt(LLVMInt32Type(), 0, 0);
+    indices[1] = LLVMConstInt(LLVMInt32Type(), 0, 0);
+    T->llvm_value = LLVMBuildGEP(builder, T->llvm_value,
+      indices, 2, new_load());
     break;
 
   // Assigning.
@@ -784,9 +791,18 @@ void gen_all(ast_node* T) {
 }
 
 void generate_IR(ast_node* T, char* input, char* output) {
+
+  // Initialize the module and builder.
   module = LLVMModuleCreateWithName(input);
   builder = LLVMCreateBuilder();
 
+  // Pre-decleare inline functions.
+  LLVMTypeRef printf_args[] = {LLVMPointerType(LLVMInt8Type(), 0)};
+  LLVMAddFunction(module, "printf", LLVMFunctionType(
+    LLVMInt32Type(), printf_args, 1, 1
+  ));
+
+  // Generate the IR code.
   gen_all(T);
   if (output) LLVMPrintModuleToFile(module, output, NULL);
 

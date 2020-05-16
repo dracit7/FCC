@@ -1079,14 +1079,15 @@ case 39:
 YY_RULE_SETUP
 #line 126 "scripts/lexer.l"
 {
-  yylval.str = strdup(yytext);
+  yylval.str = strdup(yytext) + 1;
+  yylval.str[strlen(yylval.str)-1] = 0;
   return L_STRING;
 }
 	YY_BREAK
 /* Identifiers */
 case 40:
 YY_RULE_SETUP
-#line 132 "scripts/lexer.l"
+#line 133 "scripts/lexer.l"
 {
   yylval.str = strdup(yytext);
   return IDENT;
@@ -1096,44 +1097,44 @@ YY_RULE_SETUP
 case 41:
 /* rule 41 can match eol */
 YY_RULE_SETUP
-#line 138 "scripts/lexer.l"
+#line 139 "scripts/lexer.l"
 {}
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 139 "scripts/lexer.l"
+#line 140 "scripts/lexer.l"
 {BEGIN(COMMENT);}
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 140 "scripts/lexer.l"
+#line 141 "scripts/lexer.l"
 {BEGIN(NOT_COMMENT);}
 	YY_BREAK
 case YY_STATE_EOF(COMMENT):
-#line 141 "scripts/lexer.l"
+#line 142 "scripts/lexer.l"
 {
   printf("Error: comment not terminated.\n");
 }
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 144 "scripts/lexer.l"
+#line 145 "scripts/lexer.l"
 {}
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 146 "scripts/lexer.l"
+#line 147 "scripts/lexer.l"
 {}
 	YY_BREAK
 case 46:
 /* rule 46 can match eol */
 YY_RULE_SETUP
-#line 148 "scripts/lexer.l"
+#line 149 "scripts/lexer.l"
 {yycolumn = 1;}
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 150 "scripts/lexer.l"
+#line 151 "scripts/lexer.l"
 {
   printf("Error: unregonized word %s(%d) at line %d\n", 
   yytext, yytext[0], yylineno);
@@ -1141,10 +1142,10 @@ YY_RULE_SETUP
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 155 "scripts/lexer.l"
+#line 156 "scripts/lexer.l"
 ECHO;
 	YY_BREAK
-#line 1147 "lib/lexer.c"
+#line 1148 "lib/lexer.c"
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(NOT_COMMENT):
 	yyterminate();
@@ -2162,7 +2163,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 155 "scripts/lexer.l"
+#line 156 "scripts/lexer.l"
 
 
 int yywrap() {return 1;}

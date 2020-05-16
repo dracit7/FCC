@@ -123,7 +123,8 @@ void {return T_VOID;}
 }
 
 {L_STRING} {
-  yylval.str = strdup(yytext);
+  yylval.str = strdup(yytext) + 1;
+  yylval.str[strlen(yylval.str)-1] = 0;
   return L_STRING;
 }
 

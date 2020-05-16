@@ -51,8 +51,9 @@ typedef struct {
   char name[MAX_IDENT_LEN];
   char alias[MAX_ALIAS_LEN];
 
-  // The number of paramaters.
-  int param_num;
+  // Function attributes.
+  int param_num; // The number of paramaters.
+  int param_scope; // The scope id of function's params.
 
   // The offset of external variables in the static segment;
   // The offset of local variables in the stack frame;

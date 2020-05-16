@@ -197,6 +197,7 @@ static int sem_check_var_list(ast_node* T) {
 // Semantic check: arguments of a function call.
 static int sem_check_arg(st_index symbol, ast_node* T) {
   int ideal_num = SYMBOL(symbol).param_num;
+  int param_scope = SYMBOL(symbol).param_scope;
   int err_pos = T->lineno;
   char* func_name = T->value.str;
   int err = 0;
@@ -218,10 +219,9 @@ static int sem_check_arg(st_index symbol, ast_node* T) {
     // Wrong type of argument.
     T->children[0]->offset = T->offset;
     err |= sem_check_expr(T->children[0]);
-    if (SYMBOL(symbol+i).dtype != T->children[0]->dtype) {
-      fault(-EWRONGARGTYPE, err_pos,
-        i + 1, func_name,
-        ast_table[SYMBOL(symbol+i).dtype],
+    if (SYMBOL_GLOB(param_scope, i).dtype != T->children[0]->dtype) {
+      fault(-EWRONGARGTYPE, err_pos, i + 1, func_name,
+        ast_table[SYMBOL_GLOB(param_scope, i).dtype],
         ast_table[T->children[0]->dtype]);
       err = 1;
     }
@@ -493,6 +493,10 @@ static int sem_check_expr(ast_node* T) {
     break;
 
   case FUNC_CALL:
+
+    // Do not check inline function calls.
+    if (!strcmp(T->value.str, "printf")) break;
+   
     sym = stab_search(T->value.str);
 
     // Function not defined.
@@ -673,6 +677,7 @@ static int sem_check(ast_node* T) {
     T->symbol = sym;
     T->offset = BASE_OFFSET;
     SCOPE_PUSH();
+    SYMBOL(sym).param_scope = NTH(stab.stack, CUR_SCOPE);
     if (T->children[0]) {
       T->children[0]->offset = T->offset;
       err |= sem_check(T->children[0]);
@@ -888,10 +893,9 @@ void semantic_analysis(ast_node* T) {
   stab_add("-", "-", CUR_SCOPE, T_INT, VAR, 0);
 
   // Initialize the pre-defined symbols.
-  stab_add("read", ".P1", CUR_SCOPE, T_INT, FUNC, 4);
-  SYMBOL(ST_INDEX(CUR_SCOPE, 0)).param_num = 0;
-  stab_add("write", ".P2", CUR_SCOPE, T_INT, FUNC, 4);
-  SYMBOL(ST_INDEX(CUR_SCOPE, 0)).param_num = 1;
+  st_index index = stab_add(
+    "printf", "P1", CUR_SCOPE, T_INT, FUNC, 4);
+  SYMBOL(index).param_num = 1;
 
   // Do the semantic analysis
   T->offset = 0;

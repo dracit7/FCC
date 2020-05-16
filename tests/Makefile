@@ -8,8 +8,11 @@ TESTS_SRC := \
 	comment.c\
 	control.c\
 	semantics.c\
+	fibonacci.c\
 
 TESTS := $(patsubst %.c, test-%, $(TESTS_SRC))
+
+ifndef USE_CLANG
 
 $(TESTS): all
 	@echo + $(EXECUTABLE)[TEST] $@
@@ -18,10 +21,22 @@ $(TESTS): all
 		then echo + $(EXECUTABLE)[TEST] $@ passed.;\
 		else echo + $(EXECUTABLE)[TEST] $@ failed.; fi;\
 	)
-	@llvm-as tmp/$@.ll -o tmp/$@.bc
-	@$(USE_CLANG)clang -Wno-all -emit-llvm -S $(patsubst test-%, $(TESTDIR)/%.c, $@) -o tmp/$@.ll
 	@llc -relocation-model=pic tmp/$@.ll
 	@gcc tmp/$@.s -o tmp/$@
+
+else
+
+$(TESTS): all
+	@echo + $(EXECUTABLE)[TEST] $@
+	@(\
+		if clang -Wno-all -emit-llvm -S $(patsubst test-%, $(TESTDIR)/%.c, $@) -o tmp/$@.ll;\
+		then echo + $(EXECUTABLE)[TEST] $@ passed.;\
+		else echo + $(EXECUTABLE)[TEST] $@ failed.; fi;\
+	)
+	@llc -relocation-model=pic tmp/$@.ll
+	@gcc tmp/$@.s -o tmp/$@
+
+endif
 
 test: $(TESTS)
 	

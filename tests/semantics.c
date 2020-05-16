@@ -9,6 +9,8 @@ int main() {
   for (int i = 0; i < d; i++) {
     int tmp;
   }
+  
+  printf("hello world %c", 10);
 
   return 0;
 }

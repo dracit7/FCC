@@ -21,8 +21,14 @@
 #define SCOPE(i) (NTH(stab.scopes, NTH(stab.stack, i)))
 // The index of current scope in the scope stack.
 #define CUR_SCOPE (LEN(stab.stack)-1)
-// The jth symbol in the ith scope.
+// The jth symbol in the ith scope in the scope stack.
 #define SYMBOL(index) (SCOPE(SCOPE_I(index)).symbols[SYMBOL_I(index)])
+// The jth symbol in the ith scope.
+#define SYMBOL_GLOB(i, j) (NTH(stab.scopes, i).symbols[j])
+
+// The first and second scope of scope stack.
+#define GLOB_SCOPE NTH(stab.stack, 0)
+#define PARAM_SCOPE NTH(stab.stack, 1)
 
 // Push a new scope into the scope stack.
 #define SCOPE_PUSH() do {\
